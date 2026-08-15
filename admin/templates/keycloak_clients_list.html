@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block page_title %}Tier 2 partner clients{% endblock %}
+{% block page_desc %}<p class="page-desc">OAuth clients partners use to authenticate to Tier 2. Every client created here automatically gets the audience mapper Tier 2 auth requires — no more silent "invalid token" from a hand-edited realm export missing it.</p>{% endblock %}
+{% block page_actions %}<a href="/keycloak-clients/new" class="btn btn-secondary">+ Add partner client</a>{% endblock %}
+{% block content %}
+{% if error %}<div class="callout error"><span class="ci">error</span><p>{{ error }}</p></div>{% endif %}
+{% if clients %}
+<div class="twrap">
+<table>
+  <thead><tr><th>Client ID</th><th>Name</th><th>Enabled</th><th>Audience mapper</th><th></th></tr></thead>
+  <tbody>
+  {% for client in clients %}
+    <tr>
+      <td>{{ client.client_id }}</td>
+      <td>{{ client.name }}</td>
+      <td><span class="badge {{ 'badge-ok' if client.enabled else 'badge-off' }}">{{ "enabled" if client.enabled else "disabled" }}</span></td>
+      <td>{% if client.has_audience_mapper %}<span class="badge badge-ok">present</span>{% else %}<span class="badge badge-error">missing</span>{% endif %}</td>
+      <td><a href="/keycloak-clients/{{ client.uuid }}">Manage</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% elif not error %}
+<p>No partner clients yet.</p>
+{% endif %}
+{% endblock %}

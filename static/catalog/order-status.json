@@ -1,0 +1,7 @@
+{
+  "@context": "https://schema.org",
+  "@type": "OrderStatus",
+  "orderNumber": "EXAMPLE-0001",
+  "orderStatus": "https://schema.org/OrderProcessing",
+  "description": "Placeholder entry — no real PMS/ERP connector exists yet. Only served to requesters holding a valid Tier 2 access token, over the mTLS listener. Replace with a real connector once a pilot supplier's system is actually integrated."
+}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block page_title %}Tier 3 audit trail{% endblock %}
+{% block page_desc %}<p class="page-desc">Every Tier 3 order attempt — accepted and rejected — including revoked/disabled-client rejections. Feasibility demo only: in-memory, not persisted, cleared on a <code>verify</code> restart.</p>{% endblock %}
+{% block page_actions %}<a href="/tier3-audit" class="btn btn-secondary">Refresh</a>{% endblock %}
+{% block content %}
+{% if error %}<div class="callout error"><span class="ci">error</span><p>{{ error }}</p></div>{% endif %}
+{% if entries %}
+<div class="twrap">
+<table>
+  <thead><tr><th>Time</th><th>Client</th><th>Item</th><th>Amount</th><th>Outcome</th><th>Reason</th><th>Order #</th><th>Action ID</th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+    <tr class="{{ 'error' if e.outcome == 'rejected' else '' }}">
+      <td>{{ e.at }}</td>
+      <td>{{ e.client_id }}</td>
+      <td>{{ e.item }}</td>
+      <td>€{{ "%.2f"|format(e.amount_cents / 100) }}</td>
+      <td><span class="badge {{ 'badge-error' if e.outcome == 'rejected' else 'badge-warn' if e.outcome == 'queued' else 'badge-off' if e.outcome == 'expired' else 'badge-ok' }}">{{ e.outcome }}</span></td>
+      <td>{{ e.reason }}</td>
+      <td>{{ e.order_number or "—" }}</td>
+      <td class="dim">{{ e.action_id or "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>No Tier 3 activity yet.</p>
+{% endif %}
+{% endblock %}

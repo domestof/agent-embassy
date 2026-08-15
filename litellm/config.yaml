@@ -1,0 +1,85 @@
+# LiteLLM proxy config for Agent Embassy.
+#
+# Verified empirically on 2026-08-08: the proxy starts cleanly with no
+# `model_list` and no `agents` entry. `agents:` was never actually added at
+# any later tier -- see the mcp_servers block below for why. LiteLLM's A2A
+# Agent Gateway (docs.litellm.ai/docs/a2a) turned out to be a dead end for
+# this project: it only proxies/curates an existing REMOTE service that
+# already speaks the A2A protocol (its own agent card, skills, wire
+# protocol) -- it does not translate a plain REST API into A2A. This repo
+# has no such service, and building one is a separate, much bigger project,
+# not something to fold into "connect the gateway."
+litellm_settings:
+  callbacks: ["otel"]
+  # OTEL_EXPORTER defaults to "console" (docs.litellm.ai/docs/observability/opentelemetry_integration)
+  # — traces go to stdout, no OTel Collector needed for this stage.
+
+# The internal agent's channel-choice model (see ARCHITECTURE.md) --
+# the FIRST model_list this deployment has ever had; the MCP gateway block
+# below is unaffected by its presence (verified live: MCP tool listing and
+# calls behave identically with and without this section). The provider key
+# arrives via the litellm service's environment (docker-compose.yml maps
+# ANTHROPIC_API_KEY through -- compose does not forward .env vars into
+# containers implicitly). With the key unset, the proxy still boots; a
+# /chat/completions call fails at request time and the agent falls back to
+# rules-only routing (its documented posture). In production this port is
+# NOT published to the host (docker-compose.prod.yml unpublishes it) --
+# with a model_list, a public :4000 plus the static master key would be
+# raw paid LLM access, caught at plan review.
+model_list:
+  - model_name: internal-agent-default
+    litellm_params:
+      model: anthropic/claude-haiku-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+# MCP gateway for Tier 0 (public catalog) and Tier 1 (domain verification)
+# only. LiteLLM's "MCP from OpenAPI Specs" feature (docs.litellm.ai/docs/mcp_openapi)
+# converts the spec at spec_path into MCP tools automatically -- no custom
+# server code. Confirmed empirically against the deployed image
+# (docker.litellm.ai/berriai/litellm:v1.95.0, 2026-08-11) before writing
+# this: a live spike sent a sentinel value in Authorization through this
+# exact config shape (auth_type: none + extra_headers) and got it back
+# unmodified from the wrapped backend, on a per-call basis (two different
+# sentinels in two calls came back as two different values -- not cached,
+# not shared).
+#
+# Tier 2 and Tier 3 are deliberately NOT wrapped here. Both require mTLS --
+# the caller presents its own client certificate to nginx's :8443 listener,
+# and nginx validates that specific certificate as the identity proof (see
+# nginx/default.conf and ARCHITECTURE.md). If LiteLLM sat in front of those
+# tiers, LiteLLM's own certificate is what nginx would validate, not each
+# external agent's -- collapsing "the caller controls this specific private
+# key" into "LiteLLM made this request," which is a different and weaker
+# claim. Revisiting that is a separate design decision, not a wiring task.
+mcp_servers:
+  agent_embassy:
+    # Deliberately static:80, NOT verify:8001. nginx is the only enforcement
+    # point for Tier 1 (auth_request -> verify/tier1/check gates
+    # contact.json) -- verify has no published host port specifically so
+    # nothing can reach it, and therefore its checks, except through nginx.
+    # Pointing this at verify directly would open a second, unguarded door
+    # onto the exact service that door is supposed to not have.
+    url: "http://static:80"
+    spec_path: "/app/tier0-tier1-openapi.json"
+    auth_type: "none"
+    # This is the entire per-caller identity mechanism. Without it, every
+    # MCP caller would share LiteLLM's own single credential and Tier 1's
+    # per-domain session model would collapse -- one agent's session token
+    # would work for every other agent's calls too. With auth_type: none and
+    # no oauth_passthrough/oauth_delegate set, LiteLLM does not strip or
+    # override this header; it forwards each call's own live Authorization
+    # value to the wrapped backend, unmodified.
+    extra_headers: ["Authorization"]
+    description: "Agent Embassy Tier 0 public catalog + Tier 1 domain-challenge endpoints."
+
+# LITELLM_MASTER_KEY admits callers to this /mcp endpoint. Confirmed live
+# during adversarial review: LiteLLM accepts it as EITHER x-litellm-api-key
+# OR a plain Authorization header when x-litellm-api-key is absent -- that's
+# LiteLLM's own built-in admission fallback, not something configured here.
+# The master key in Authorization is still harmless downstream: it's just
+# forwarded to nginx/verify as a (garbage) Tier 1 session token and 401s
+# like any other invalid one -- confirmed live, no privilege escalation --
+# but it does mean a caller who only has the master key gets free tool-list
+# enumeration through a header this file otherwise treats as pure pass-
+# through. Prefer x-litellm-api-key for admission and keep Authorization
+# exclusively for the caller's own Tier 1 token, to avoid confusing the two.

@@ -1,0 +1,208 @@
+# Production overlay for the real two-company pilot. docker-compose.yml
+# alone remains the full local dev stack, completely unmodified by this
+# file's existence -- run production with:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# See README's "Running a production pilot deployment" section for the full
+# runbook (Postgres/Keycloak, OpenBao init+unseal via openbao/SETUP.md, real
+# TLS certs via certs/generate-dev-certs.sh <hostname> + Let's Encrypt).
+#
+# Compose merges services key-by-key with the base file: `environment` and
+# `volumes` merge (by variable name / mount target respectively -- an entry
+# here with the same key/target as the base file replaces just that entry,
+# others are preserved), while `command` is replaced wholesale. `ports` is
+# the one field this file deliberately uses the `!override` tag on --
+# Compose's default behavior for lists like `ports` is to APPEND to the
+# base file's list, not replace it (confirmed empirically against this
+# Compose version), which would otherwise leave dev's plain :8080 and the
+# self-signed-only :8444 mapping still published alongside prod's real
+# :80/:443 -- confirmed live during implementation, not assumed.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  keycloak:
+    # start-dev -> start: Keycloak's own docs mark the dev-file/embedded
+    # store unsupported for production use. --hostname is required by
+    # `start` itself (non-dev mode refuses to boot without an explicit
+    # hostname decision, to stop dynamic hostname resolution from request
+    # headers enabling issuer spoofing).
+    #
+    # keycloak/realm-export.json's own frontendUrl (pinned to
+    # http://keycloak:8080, the internal Docker address every caller --
+    # verify, admin -- already uses in both dev and prod) is deliberately
+    # left untouched here. See ARCHITECTURE.md for the full reasoning:
+    # this is the lowest-risk way to not
+    # regress the issuer-mismatch bug frontendUrl was added to fix, at the
+    # accepted cost of a real partner's JWT carrying an undereferenceable
+    # `iss` (cosmetically odd, functionally fine -- verify only ever
+    # string-compares iss, no OIDC discovery against it is required
+    # anywhere in this design).
+    # --import-realm is repeated here (not just base's start-dev command)
+    # because Compose's `command` field is REPLACED wholesale by an
+    # override, not merged -- confirmed empirically during implementation;
+    # dropping it here would silently boot Keycloak with no agent-embassy
+    # realm at all, breaking everything downstream (verify, admin, every
+    # test). Same idempotent-if-already-imported behavior as dev's identical
+    # flag.
+    command: ["start", "--import-realm", "--hostname=${KEYCLOAK_HOSTNAME:?set KEYCLOAK_HOSTNAME in .env, e.g. keycloak.example.com}"]
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Trusts nginx's X-Forwarded-* headers (nginx/default.conf's :8444
+      # /keycloak/ location sets them) -- flag name confirmed live against
+      # this exact image/tag (`docker run quay.io/keycloak/keycloak:26.7.1
+      # start --help-all`), not assumed from docs alone.
+      - KC_PROXY_HEADERS=xforwarded
+      # Keycloak stays plain HTTP internally; nginx is the sole public TLS
+      # terminator (see nginx/default.conf's :8444 /keycloak/ proxy_pass),
+      # the same pattern this project already uses for `verify`.
+      - KC_HTTP_ENABLED=true
+    ports: !override []  # un-published -- nginx fronts it (see static's :8444 /keycloak/ proxy below), not exposed directly as dev's :8082 is
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Dev mode (docker-compose.yml alone) is in-memory/auto-unsealed with a
+  # hardcoded root token -- explicitly not for real use. This override
+  # switches to raft storage (OpenBao's own docs mark the file backend
+  # "not production recommended"; raft is the recommended default even
+  # single node) with manual Shamir unseal (the only non-cloud-KMS
+  # auto-unseal option, "transit" seal, needs a second already-unsealed
+  # instance to act as key server -- circular, not worth operating at this
+  # scale). See openbao/SETUP.md for the one-time init/unseal/policy
+  # runbook this depends on.
+  # In dev, litellm's :4000 is published for local MCP experimentation. In
+  # production it must NOT be: with step 10's model_list in
+  # litellm/config.yaml, an internet-facing :4000 plus the single static
+  # LITELLM_MASTER_KEY would be raw, paid /chat/completions access billed to
+  # the operator's provider key (caught at plan-stage adversarial review).
+  # The internal agent reaches it at http://litellm:4000 over the docker
+  # network regardless -- unpublishing costs nothing internally, the same
+  # unpublished-port trust boundary verify/openbao/agent/stubs already use.
+  litellm:
+    ports: !override []
+
+  openbao:
+    command: ["server", "-config=/openbao/config/openbao.hcl"]
+    environment: !override []  # clears the dev-mode root token/listen-address vars -- openbao.hcl drives everything now
+    volumes:
+      - ./openbao/openbao.hcl:/openbao/config/openbao.hcl:ro
+      # /openbao/file, not /openbao/data -- see openbao.hcl's comment for
+      # why (the image's own pre-existing, correctly-owned path).
+      - openbao-data:/openbao/file
+
+  static:
+    # Real public HTTPS for Tier 0/1 needs to replace, not add to, dev's
+    # host port mapping -- see this file's header comment for why `ports`
+    # specifically needs !override here. Certs at the same mount paths as
+    # dev (docker-compose.yml's per-file allowlist, unchanged) -- only
+    # what's INSIDE public.crt/public.key differs (a real Let's Encrypt
+    # cert via certs/refresh-public-cert.sh instead of the self-signed
+    # copy certs/generate-dev-certs.sh produces).
+    #
+    # default.conf IS overridden, unlike the certs above: dev's :80 serves
+    # Tier 0/1 in plain HTTP, which is fine only because dev is never
+    # internet-facing. This port is ("80:80" below) -- see
+    # nginx/default.prod.conf's header comment for the full reasoning
+    # (added by adversarial review, 2026-08-11, after the initial
+    # productionization commit shipped this port mapping without it).
+    # tls-listeners.conf isn't re-mounted here -- Compose merges `volumes`
+    # by mount target (this file's header comment), so the base file's
+    # mount of it is preserved unchanged; both default.conf and
+    # default.prod.conf `include` the exact same file.
+    volumes:
+      - ./nginx/default.prod.conf:/etc/nginx/conf.d/default.conf:ro
+    ports: !override
+      - "80:80"      # ACME HTTP-01 webroot + a hard redirect to HTTPS for everything else
+      - "443:8444"   # real public HTTPS for Tier 0/1 (see nginx/tls-listeners.conf's :8444 block)
+      - "8443:443"   # mTLS partner port -- same external port number as dev, no partner-facing change
+      # :8080 (default.prod.conf's internal-only plain-HTTP listener) is
+      # deliberately absent here -- see that file's header comment.
+
+  admin:
+    environment:
+      # Overrides the base file's http://static:80 -- in prod, :80
+      # redirects everything to HTTPS (see static's volumes override
+      # above), which would send this internal-only console traffic to the
+      # mTLS-only :443 listener with no client cert to present. :8080 is
+      # the internal-only plain-HTTP listener default.prod.conf adds
+      # specifically for this.
+      - STATIC_BASE_URL=http://static:8080
+      - OPENBAO_ADDR=http://openbao:8200
+      # Deliberately soft (not `:?`-required): openbao/SETUP.md's token-mint
+      # step can only run against an already-running `openbao` container,
+      # but a `:?`-required var here blocks `docker compose config` --
+      # and therefore every `up`, even one scoped to just `openbao` -- for
+      # the WHOLE overlay before OpenBao can ever start. Confirmed live
+      # (2026-08-11 adversarial review): `docker compose config` fails
+      # identically whether or not `openbao` is the only targeted service,
+      # since Compose interpolates every service's config up front. Correct
+      # bootstrap order is: `up` the full stack once with this unset (admin
+      # starts fine, OpenBao writes are skipped -- see
+      # admin/openbao_client.py's `configured()`), run SETUP.md against the
+      # now-running openbao, put the resulting token in .env, then `docker
+      # compose ... up -d admin` to pick it up -- NOT `restart`: confirmed
+      # live (2026-08-12 adversarial review, via `docker inspect
+      # --format '{{json .Config.Env}}'` before/after) that `restart` just
+      # restarts the existing container's already-baked-in environment and
+      # never rereads `.env`, silently leaving this empty forever with no
+      # error surfaced anywhere. See README's "Running a production pilot
+      # deployment" section for the full sequence.
+      - OPENBAO_TOKEN=${OPENBAO_TOKEN:-}
+
+  # Standard certbot Docker pattern: a one-shot `certonly` run (manual, see
+  # README -- must not silently hit Let's Encrypt's rate-limited API) for
+  # initial issuance, then this service's entrypoint loops `certbot renew`
+  # every 12h. Webroot is ./static, the same directory nginx's :80 listener
+  # already serves -- certbot's HTTP-01 challenge files land under
+  # .well-known/acme-challenge/, already covered by :80's existing
+  # catch-all with no nginx config change (verified structurally, see
+  # README).
+  #
+  # The one-shot `certonly` run does NOT go through this service's own
+  # entrypoint below -- see README's documented command, which overrides it
+  # with `--entrypoint ""`. `docker compose run certbot certonly ...`
+  # (without that override) silently does NOT run certonly at all: `run`
+  # only replaces `command`, not `entrypoint`, so `certonly --webroot ...`
+  # arrives as $0/$1/$2... of the fixed `sh -c '<renew loop>'` below, which
+  # never references them -- confirmed live (2026-08-11 adversarial review)
+  # by reproducing the exact same entrypoint/args split with plain `sh -c`.
+  certbot:
+    # Pinned, not :latest -- same reasoning as litellm's own pinned image
+    # above (a silent `docker compose pull` on :latest could change
+    # behavior with no repo diff to point at). Confirmed this tag is
+    # actually published: `docker manifest inspect certbot/certbot:v5.7.0`
+    # (2026-08-12); v5.7.1/v5.8.0/v6.0.0 don't exist yet as of that check.
+    # (An earlier pin to v4.2.0 checked only adjacent patch/minor tags and
+    # missed that certbot had already jumped a full major version since --
+    # found by adversarial review, 2026-08-12; check across major versions
+    # too when re-pinning in the future, not just the next few patches.)
+    image: certbot/certbot:v5.7.0
+    volumes:
+      - ./static:/var/www/certbot
+      - ./certs/letsencrypt:/etc/letsencrypt
+    entrypoint: >
+      sh -c 'trap exit TERM;
+      while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done'
+
+volumes:
+  postgres-data:
+  openbao-data:

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block page_title %}{{ label }}{% endblock %}
+{% block page_actions %}<a href="/catalog/{{ kind }}/new" class="btn btn-secondary">+ Add item</a>{% endblock %}
+{% block content %}
+{% if items %}
+<div class="twrap">
+<table>
+  <thead><tr><th>Name</th><th>Description</th><th></th></tr></thead>
+  <tbody>
+  {% for index, item in items %}
+    <tr>
+      <td>{{ item.name or item.title or "(untitled)" }}</td>
+      <td>{{ item.description or "" }}</td>
+      <td>
+        <a href="/catalog/{{ kind }}/{{ index }}/edit">Edit</a>
+        <form method="post" action="/catalog/{{ kind }}/{{ index }}/delete" class="inline" onsubmit="return confirm('Delete this item?')">
+          <button type="submit" class="btn-danger-filled">Delete</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>No items yet.</p>
+{% endif %}
+{% endblock %}

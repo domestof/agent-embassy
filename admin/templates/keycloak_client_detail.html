@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block page_title %}Partner client{% endblock %}
+{% block content %}
+{% if error %}<div class="callout error"><span class="ci">error</span><p>{{ error }}</p></div>{% endif %}
+{% if openbao_warning %}
+<div class="callout warn"><span class="ci">warning</span><p>Could not write this client's secret to OpenBao (its backup store) — the secret itself is fine and Keycloak still has it. Click "Reveal secret" again to retry the backup write.</p></div>
+{% endif %}
+{% if client %}
+<div class="twrap">
+<table>
+  <tbody>
+    <tr><th>Client ID</th><td>{{ client.client_id }}</td></tr>
+    <tr><th>Name</th><td>{{ client.name }}</td></tr>
+    <tr><th>Enabled</th>
+      <td>
+        <span class="badge {{ 'badge-ok' if client.enabled else 'badge-off' }}">{{ "enabled" if client.enabled else "disabled" }}</span>
+        {% if client.enabled %}
+        <form method="post" action="/keycloak-clients/{{ client_uuid }}/disable" class="inline"
+              onsubmit="return confirm('Disable this client? This revokes Tier 3 access immediately, including already-issued tokens — Tier 2 access stays valid until those tokens naturally expire.')">
+          <button type="submit" class="btn-danger">Disable</button>
+        </form>
+        {% else %}
+        <form method="post" action="/keycloak-clients/{{ client_uuid }}/enable" class="inline">
+          <button type="submit">Enable</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    <tr><th>Audience mapper</th>
+      <td>
+        {% if client.has_audience_mapper %}
+        <span class="badge badge-ok">present</span> — tokens from this client pass Tier 2 auth
+        {% else %}
+        <span class="badge badge-error">missing</span> — tokens from this client will be rejected by Tier 2 with a generic "invalid token"
+        {% endif %}
+      </td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Tier 3 — deep integration</h2>
+<div class="callout note"><span class="ci">note</span><p>The weekly limit below is this client's <strong>mandate</strong>: within it, the partner's agent acts autonomously (the internal agent executes each order via its configured channel); beyond it, orders are <strong>queued for your explicit approval</strong> on the <a href="/approvals">Approvals</a> page instead of being rejected. Revoking the mandate also cancels its pending approvals. Grants apply immediately in the running <code>verify</code> process but are NOT persisted; they revert to "no grant" on a <code>verify</code> restart, same as Tier 1's config.</p></div>
+{% if tier3_grant and tier3_grant.error %}
+<div class="callout error"><span class="ci">error</span><p>{{ tier3_grant.error }}</p></div>
+{% elif tier3_grant and tier3_grant.values and tier3_grant.values.weekly_limit_cents is not none %}
+<div class="twrap">
+<table>
+  <tbody>
+    <tr><th>Weekly limit</th><td>€{{ "%.2f"|format(tier3_grant.values.weekly_limit_cents / 100) }}</td></tr>
+    <tr><th>Used this week</th><td>€{{ "%.2f"|format(tier3_grant.values.used_cents / 100) }}</td></tr>
+    <tr><th>Remaining</th><td>€{{ "%.2f"|format(tier3_grant.values.remaining_cents / 100) }}</td></tr>
+  </tbody>
+</table>
+</div>
+<form method="post" action="/keycloak-clients/{{ client_uuid }}/tier3-grant/revoke" class="inline"
+      onsubmit="return confirm('Revoke Tier 3 access for this client? The next order attempt will be rejected immediately, and any orders currently awaiting approval are cancelled.')">
+  <button type="submit" class="btn-danger">Revoke Tier 3 access</button>
+</form>
+{% else %}
+<p>No Tier 3 grant — this client cannot place Tier 3 orders.</p>
+{% endif %}
+<form method="post" action="/keycloak-clients/{{ client_uuid }}/tier3-grant" class="inline">
+  <label>Weekly limit (whole euros)
+    <input type="number" min="1" step="1" name="weekly_limit_eur" required>
+    <span class="form-hint">Maximum this client may spend in a rolling week, in whole euros (illustrative example: €400/week for an auto-reordering laundry supplier). Applies immediately in <code>verify</code>'s in-memory state — not persisted, and reverts to "no grant" if <code>verify</code> restarts. Usage against this limit is tracked automatically as Tier 3 orders are placed; see the Tier 3 audit page for the full trail.</span>
+  </label>
+  <button type="submit">Set weekly limit</button>
+</form>
+
+<h2>Secret</h2>
+{% if secret %}
+<pre>{{ secret }}</pre>
+<p>Copy this now — it can be revealed again any time, but treat it as sensitive.</p>
+{% else %}
+<form method="post" action="/keycloak-clients/{{ client_uuid }}/reveal-secret" class="inline">
+  <button type="submit" class="btn-secondary">Reveal secret</button>
+</form>
+{% endif %}
+<form method="post" action="/keycloak-clients/{{ client_uuid }}/regenerate-secret" class="inline"
+      onsubmit="return confirm('Regenerate this client\'s secret? The old secret stops working immediately.')">
+  <button type="submit" class="btn-danger">Regenerate secret</button>
+</form>
+
+<h2>Delete</h2>
+<form method="post" action="/keycloak-clients/{{ client_uuid }}/delete"
+      onsubmit="return confirm('Delete this partner client? This cannot be undone.')">
+  <button type="submit" class="btn-danger-filled">Delete client</button>
+</form>
+{% endif %}
+<p><a href="/keycloak-clients">Back to partner clients</a></p>
+{% endblock %}

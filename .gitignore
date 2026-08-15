@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+verify/.venv/
+certs/*.key
+certs/*.crt
+certs/*.srl
+static-logs/
+admin/.venv/
+agent/.venv/
+stubs/.venv/

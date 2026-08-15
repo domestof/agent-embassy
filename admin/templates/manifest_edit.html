@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block page_title %}Manifest (Tier 0){% endblock %}
+{% block page_desc %}<p class="page-desc">Only Tier 0 fields are editable here. Tier 1/2 access-tier entries are managed outside this UI and shown for reference only — saving never touches them.</p>{% endblock %}
+{% block content %}
+<form method="post" action="/manifest">
+  <fieldset>
+    <legend>Entity</legend>
+    <label>Name
+      <input type="text" name="entity__name" value="{{ doc.entity.name or '' }}">
+      <span class="form-hint">The legal or trading name shown to any agent that reads your public manifest.</span>
+    </label>
+    <label>Tax ID
+      <input type="text" name="entity__tax_id" value="{{ doc.entity.tax_id or '' }}">
+      <span class="form-hint">Your business's tax/VAT identifier — shown publicly in the manifest, used by partners to confirm which legal entity they're dealing with.</span>
+    </label>
+    <label>Website
+      <input type="text" name="entity__website" value="{{ doc.entity.website or '' }}">
+      <span class="form-hint">Your public website — shown alongside the catalog so an agent (or the human behind it) can cross-check who's publishing it.</span>
+    </label>
+    <label>Country
+      <input type="text" name="entity__country" value="{{ doc.entity.country or '' }}">
+      <span class="form-hint">ISO country code or plain country name for your registered entity.</span>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Tier 0 access</legend>
+    <label>Rate limit
+      <input type="text" name="rate_limit" value="{{ tier0.rate_limit or '' }}">
+      <span class="form-hint">Free-text description of your intended request rate (e.g. "100 requests/hour"), advertised in the manifest for callers to read — nothing in Tier 0 currently enforces this against real traffic, so treat it as a stated policy, not a technical control.</span>
+    </label>
+    <div id="extra-rows">
+      {% for name, value in (tier0.extra or {}).items() %}
+      <div class="extra-row">
+        <input type="text" name="extra_name" placeholder="Name" value="{{ name }}">
+        <input type="text" name="extra_value" placeholder="Value" value="{{ value }}">
+      </div>
+      {% endfor %}
+      <div class="extra-row">
+        <input type="text" name="extra_name" placeholder="Name">
+        <input type="text" name="extra_value" placeholder="Value">
+      </div>
+    </div>
+    <button type="button" class="btn-secondary" onclick="addExtraRow('extra-rows', '&lt;input type=&quot;text&quot; name=&quot;extra_name&quot; placeholder=&quot;Name&quot;&gt;&lt;input type=&quot;text&quot; name=&quot;extra_value&quot; placeholder=&quot;Value&quot;&gt;')">+ Add config</button>
+  </fieldset>
+
+  <fieldset>
+    <legend>Security</legend>
+    <div>
+      <label class="checkbox-label"><input type="checkbox" name="security__gateway_required" {% if doc.security.gateway_required %}checked{% endif %}> Gateway required</label>
+      <span class="form-hint">Asserts that all traffic to your systems passes through this gateway rather than reaching your internal systems directly — a manifest-level claim other parties can check, not something this checkbox itself enforces.</span>
+    </div>
+    <div>
+      <label class="checkbox-label"><input type="checkbox" name="security__direct_llm_exposure" {% if doc.security.direct_llm_exposure %}checked{% endif %}> Direct LLM exposure</label>
+      <span class="form-hint">Should stay unchecked for a gateway-protected setup — checking it is an explicit admission that some external caller can reach your internal LLM directly, bypassing the gateway's schema/auth/rate-limit checks.</span>
+    </div>
+    <div>
+      <label class="checkbox-label"><input type="checkbox" name="security__audit_logging" {% if doc.security.audit_logging %}checked{% endif %}> Audit logging</label>
+      <span class="form-hint">Asserts that requests to your systems are logged for audit purposes — matches what the admin UI's own "Catalog request activity" page already shows for Tier 0 traffic.</span>
+    </div>
+  </fieldset>
+
+  {% if doc.access_tiers %}
+  <fieldset>
+    <legend>Managed elsewhere (read-only)</legend>
+    {% for tier in doc.access_tiers %}
+      {% if tier.tier != 0 %}
+      <p class="form-hint">Tier {{ tier.tier }}: {{ tier.auth }}</p>
+      {% endif %}
+    {% endfor %}
+  </fieldset>
+  {% endif %}
+
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

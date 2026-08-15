@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block page_title %}Internal agent{% endblock %}
+{% block page_desc %}<p class="page-desc">Read-only status of the privileged internal agent — the separate container that executes Tier 3 actions against their channels. The gateway (<code>verify</code>) decides <em>whether</em> an action may run; this agent only decides <em>where</em> (which channel), rules first, LLM only where a rule delegates to it.</p>{% endblock %}
+{% block page_actions %}<a href="/internal-agent" class="btn btn-secondary">Refresh</a>{% endblock %}
+{% block content %}
+{% if error %}
+<div class="callout error"><span class="ci">error</span><p>{{ error }}</p></div>
+{% else %}
+
+<h2>Configuration</h2>
+<div class="twrap">
+<table>
+  <tbody>
+    <tr><th>Reachable</th><td><span class="badge badge-ok">yes</span></td></tr>
+    <tr><th>Routing rules</th><td>{{ rules.rules | length }} rule(s), channels: {{ rules.allowed_channels | join(", ") }} <span class="dim">({{ rules.path }})</span></td></tr>
+    <tr>
+      <th>LLM</th>
+      <td>
+        {% if llm.configured %}
+          <span class="badge badge-ok">configured</span> model <code>{{ llm.model }}</code> via <code>{{ llm.base_url }}</code>
+        {% else %}
+          <span class="badge badge-off">not configured</span> <span class="dim">rules-only routing; set AGENT_LLM_MODEL + the provider key in .env to enable</span>
+        {% endif %}
+      </td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Routing rules</h2>
+<div class="twrap">
+<table>
+  <thead><tr><th>#</th><th>Action type</th><th>Condition</th><th>Channel</th></tr></thead>
+  <tbody>
+  {% for r in rules.rules %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td><code>{{ r.action_type }}</code></td>
+      <td>{% if r.max_amount_cents is defined and r.max_amount_cents is not none %}amount ≤ €{{ "%.2f"|format(r.max_amount_cents / 100) }}{% else %}always{% endif %}</td>
+      <td>{% if r.channel == "llm" %}<span class="badge badge-warn">LLM decides</span>{% else %}<code>{{ r.channel }}</code>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="dim">Edit <code>agent/rules.json</code> and restart the <code>agent</code> container to change routing. First matching rule wins; no match means the action fails (never a guessed default).</p>
+
+<h2>Decision log</h2>
+<div class="callout note"><span class="ci">note</span><p>One row per handoff, newest first — in-memory, bounded, cleared on an <code>agent</code> restart. The <strong>action ID</strong> column is the reconciliation key for any "execution unknown" row in the <a href="/tier3-audit">Tier 3 audit</a>. The raw LLM output shown below is <strong>untrusted, caller-influenced text</strong> — it is displayed here for reconciliation only and never reaches partners or the audit trail.</p></div>
+{% if decisions %}
+<div class="twrap">
+<table>
+  <thead><tr><th>Time</th><th>Action ID</th><th>Client</th><th>Item</th><th>Amount</th><th>Mode</th><th>Decided by</th><th>Channel</th><th>Executed</th><th>LLM raw output</th></tr></thead>
+  <tbody>
+  {% for d in decisions %}
+    <tr class="{{ 'error' if not d.executed else '' }}">
+      <td>{{ d.at }}</td>
+      <td class="dim">{{ d.action_id }}</td>
+      <td>{{ d.client_id }}</td>
+      <td>{{ d.item }}</td>
+      <td>€{{ "%.2f"|format(d.amount_cents / 100) }}</td>
+      <td>{{ d.mode }}</td>
+      <td>{{ d.decided_by or "—" }}</td>
+      <td>{{ d.channel or "—" }}</td>
+      <td><span class="badge {{ 'badge-ok' if d.executed else 'badge-error' }}">{{ "yes" if d.executed else "no" }}</span></td>
+      <td class="dim">{{ d.llm_raw or "—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>No decisions yet.</p>
+{% endif %}
+{% endif %}
+{% endblock %}

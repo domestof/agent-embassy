@@ -1,0 +1,262 @@
+services:
+  litellm:
+    # Pinned, not :latest -- the mcp_servers extra_headers passthrough this
+    # config relies on (see litellm/config.yaml) was verified empirically
+    # against this exact version's source and behavior, and is undocumented
+    # for the OpenAPI-wrap path. A silent `docker compose pull` on :latest
+    # could change that behavior with no repo diff to point at. Confirmed
+    # this tag is actually published: `docker manifest inspect
+    # docker.litellm.ai/berriai/litellm:v1.95.0` (2026-08-11).
+    image: docker.litellm.ai/berriai/litellm:v1.95.0
+    command: ["--config", "/app/config.yaml"]
+    ports:
+      - "4000:4000"
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in .env}
+      # Provider key for the internal agent's channel-choice model (see
+      # litellm/config.yaml's model_list). Soft-optional on purpose: without
+      # it the LLM path fails at request time and the agent runs rules-only
+      # (its documented fallback). Compose does NOT forward host/.env vars
+      # into containers implicitly, so this line is load-bearing -- without
+      # it the key never reaches the container and the LLM path dies
+      # silently even with the key set in .env (caught at plan review).
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+      - ./litellm/tier0-tier1-openapi.json:/app/tier0-tier1-openapi.json:ro
+    depends_on:
+      # Ordering only -- the spec is a local file, so litellm itself boots
+      # fine without static. This just avoids the container starting and
+      # briefly failing MCP tool calls before static is up, same reasoning
+      # admin already applies to its own dependencies.
+      static:
+        condition: service_started
+
+  static:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+      - "8443:443"
+      - "8444:8444"
+    volumes:
+      - ./static:/usr/share/nginx/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/tier0-tier1-locations.conf:/etc/nginx/tier0-tier1-locations.conf:ro
+      - ./nginx/tls-listeners.conf:/etc/nginx/tls-listeners.conf:ro
+      # Explicit per-file allowlist, not a whole-directory mount -- nginx
+      # only ever needs the CA's public cert (to verify client certs) and
+      # the two cert/key pairs it terminates TLS with, never ca.key (the
+      # CA's signing key) or the example partner's own client cert/key.
+      - ./certs/ca.crt:/etc/nginx/certs/ca.crt:ro
+      - ./certs/server.crt:/etc/nginx/certs/server.crt:ro
+      - ./certs/server.key:/etc/nginx/certs/server.key:ro
+      - ./certs/public.crt:/etc/nginx/certs/public.crt:ro
+      - ./certs/public.key:/etc/nginx/certs/public.key:ro
+      # Shadows the image's default access.log (a symlink to /dev/stdout,
+      # confirmed by inspecting nginx:alpine directly) with a real host
+      # directory, so a second container (admin) can read it. Tradeoff:
+      # access-log lines no longer show up in `docker compose logs static`,
+      # only in this file — see the admin UI's "Running the Admin UI
+      # locally" README section.
+      - ./static-logs:/var/log/nginx
+    depends_on:
+      verify:
+        condition: service_healthy
+
+  verify:
+    build: ./verify
+    # No published port: verify is reached only via nginx's `auth_request`
+    # (Tier 1/2 gates) or its container-internal address (Tier 1's public
+    # challenge/verify endpoints are reverse-proxied by nginx, see
+    # nginx/default.conf). Publishing this port directly would let a caller
+    # hit /tier2/check with a forged X-SSL-Client-Verify header, bypassing
+    # the mTLS proof nginx is supposed to be the sole source of.
+    environment:
+      - CHALLENGE_TTL_SECONDS=300
+      - SESSION_TTL_SECONDS=3600
+      - CHALLENGE_RATE_LIMIT_MAX=10
+      - CHALLENGE_RATE_LIMIT_WINDOW=60
+      # Previously absent here entirely (silently ran on main.py's in-code
+      # defaults, 10/60, in every deployment) -- an existing gap fixed while
+      # wiring up admin-config, since these are now user-visible startup
+      # defaults, not just an implementation detail.
+      - VERIFY_RATE_LIMIT_MAX=10
+      - VERIFY_RATE_LIMIT_WINDOW=60
+      - KEYCLOAK_JWKS_URL=http://keycloak:8080/realms/agent-embassy/protocol/openid-connect/certs
+      - KEYCLOAK_ISSUER=http://keycloak:8080/realms/agent-embassy
+      - TIER2_AUDIENCE=${TIER2_AUDIENCE:-agent-embassy-tier2}
+      - ADMIN_INTERNAL_TOKEN=${ADMIN_INTERNAL_TOKEN:?set ADMIN_INTERNAL_TOKEN in .env}
+      # Tier 3 (see verify/introspection.py): the introspecting client is
+      # named agent-embassy-tier2 on purpose, matching TIER2_AUDIENCE above
+      # -- Keycloak's introspection endpoint requires the authenticated
+      # client's own clientId to appear in the token's aud claim, and every
+      # partner token already carries that value via the tier2-audience
+      # mapper, so no separate client identity is needed here.
+      - KEYCLOAK_INTROSPECTION_URL=http://keycloak:8080/realms/agent-embassy/protocol/openid-connect/token/introspect
+      - TIER3_INTROSPECTION_CLIENT_ID=${TIER2_AUDIENCE:-agent-embassy-tier2}
+      - TIER3_INTROSPECTION_SECRET=${TIER3_INTROSPECTION_SECRET:?set TIER3_INTROSPECTION_SECRET in .env}
+      - TIER3_WINDOW_SECONDS=${TIER3_WINDOW_SECONDS:-604800}
+      # Deliberately separate from VERIFY_RATE_LIMIT_MAX/WINDOW above -- see
+      # Store.tier3_rate_limit_max's comment in verify/main.py for why
+      # sharing that bucket was tried first and rejected (a hidden coupling
+      # to Tier 1's admin config page, found live during adversarial review).
+      - TIER3_RATE_LIMIT_MAX=10
+      - TIER3_RATE_LIMIT_WINDOW=60
+      # Tier 3's internal-agent handoff (see ARCHITECTURE.md). A
+      # DIFFERENT secret from ADMIN_INTERNAL_TOKEN on purpose: this one
+      # authorizes execution (verify -> agent), and the agent must never
+      # hold a token verify itself accepts.
+      - AGENT_INTERNAL_TOKEN=${AGENT_INTERNAL_TOKEN:?set AGENT_INTERNAL_TOKEN in .env}
+      - AGENT_BASE_URL=http://agent:8010
+      # The approval queue and poll endpoint. Pending/resolution TTLs
+      # default to TIER3_WINDOW_SECONDS when unset (deliberately coupled --
+      # see Store's comments). The poll bucket is separate from
+      # TIER3_RATE_LIMIT_* because polling a pending action for days is the
+      # designed behavior, not abuse.
+      - TIER3_PENDING_MAX_PER_CLIENT=10
+      - TIER3_POLL_RATE_LIMIT_MAX=60
+      - TIER3_POLL_RATE_LIMIT_WINDOW=60
+    depends_on:
+      # Ordering only (service_started, not service_healthy): verify must
+      # boot and keep serving Tiers 0-2 even with the agent broken -- Tier 3
+      # then fails closed per request (503, budget released), which is the
+      # designed degradation, not a boot dependency.
+      agent:
+        condition: service_started
+    healthcheck:
+      # verify's own image has no curl; urllib against the app's own
+      # health endpoint needs nothing extra installed.
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.1
+    command: ["start-dev", "--import-realm"]
+    ports:
+      - "8082:8080"
+    environment:
+      # Promoted from a hardcoded admin/admin default: once the admin UI
+      # started using this credential programmatically (Tier 2 client
+      # management, below) it's no longer just a throwaway dev default in a
+      # compose file, so it gets the same ${VAR:?...} fail-closed treatment
+      # as ADMIN_UI_USERNAME/PASSWORD.
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USERNAME:?set KEYCLOAK_ADMIN_USERNAME in .env}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in .env}
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    healthcheck:
+      # No curl/wget in this image (confirmed live). bash is present, so a
+      # /dev/tcp connect-only probe stands in -- confirmed live that the
+      # port only starts accepting connections once the realm import and
+      # full boot are actually done, not before.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  # Tier 0 admin UI: catalog CRUD, a "preview as an agent" console, and
+  # catalog request activity. Published (unlike verify/openbao) because it
+  # has its own independent Basic-Auth check — there's no header-forgery
+  # trust boundary to protect by hiding it behind nginx, the reasoning that
+  # keeps those two unpublished.
+  admin:
+    build: ./admin
+    ports:
+      - "8090:8002"
+    environment:
+      - ADMIN_UI_USERNAME=${ADMIN_UI_USERNAME:?set ADMIN_UI_USERNAME in .env}
+      - ADMIN_UI_PASSWORD=${ADMIN_UI_PASSWORD:?set ADMIN_UI_PASSWORD in .env}
+      - STATIC_BASE_URL=http://static:80
+      - STATIC_DIR=/data/static
+      - NGINX_ACCESS_LOG=/var/log/nginx/access.log
+      - KEYCLOAK_BASE_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=agent-embassy
+      - KEYCLOAK_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USERNAME:?set KEYCLOAK_ADMIN_USERNAME in .env}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in .env}
+      - TIER2_AUDIENCE=${TIER2_AUDIENCE:-agent-embassy-tier2}
+      - VERIFY_BASE_URL=http://verify:8001
+      - ADMIN_INTERNAL_TOKEN=${ADMIN_INTERNAL_TOKEN:?set ADMIN_INTERNAL_TOKEN in .env}
+      # Read-only status of the internal agent (Approvals / Internal agent
+      # pages). The status secret, never AGENT_INTERNAL_TOKEN -- admin must
+      # be structurally unable to invoke the agent's execution endpoint.
+      - AGENT_BASE_URL=http://agent:8010
+      - AGENT_STATUS_TOKEN=${AGENT_STATUS_TOKEN:?set AGENT_STATUS_TOKEN in .env}
+    volumes:
+      # Read-write mount of the SAME host directory nginx serves read-only,
+      # at a different container path — admin only ever reads/writes files,
+      # nginx stays the only thing that serves them.
+      - ./static:/data/static:rw
+      - ./static-logs:/var/log/nginx:ro
+    depends_on:
+      static:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
+      verify:
+        condition: service_healthy
+
+  # The privileged internal agent (see ARCHITECTURE.md): receives Tier 3
+  # action handoffs from verify as fixed-schema envelopes and executes them
+  # against the stub channels below -- rules first, LLM (via litellm) only
+  # for channel choice where a rule delegates to it. No published port, same
+  # reasoning as verify: its /internal/actions endpoint trusts a shared
+  # secret that must never be reachable from outside docker.
+  agent:
+    build: ./agent
+    environment:
+      - AGENT_INTERNAL_TOKEN=${AGENT_INTERNAL_TOKEN:?set AGENT_INTERNAL_TOKEN in .env}
+      # Read-only status for the admin UI. A THIRD secret, not
+      # ADMIN_INTERNAL_TOKEN: the agent must hold no token verify accepts
+      # (compromising the component that ingests attacker-influenced text
+      # must yield no authority over grants/approvals/audit).
+      - AGENT_STATUS_TOKEN=${AGENT_STATUS_TOKEN:?set AGENT_STATUS_TOKEN in .env}
+      - LITELLM_BASE_URL=http://litellm:4000
+      # LiteLLM without a database cannot mint scoped virtual keys, so the
+      # master key is what authenticates this internal caller -- documented
+      # residual, same as step 8's master-key admission note.
+      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in .env}
+      # Empty = LLM disabled, rules-only (the dev default). Set to
+      # "internal-agent-default" (litellm/config.yaml's model_list entry)
+      # together with ANTHROPIC_API_KEY to enable the LLM path.
+      - AGENT_LLM_MODEL=${AGENT_LLM_MODEL:-}
+      - STUBS_BASE_URL=http://stubs:8020
+    volumes:
+      # The routing rules are operator config, mounted not baked in, so an
+      # admin can edit them and restart only this container.
+      - ./agent/rules.json:/app/rules.json:ro
+    depends_on:
+      stubs:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health')"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  # Illustrative execution-channel stubs (mock ERP / Slack-shaped webhook /
+  # email-shaped send) so the agent's routing crosses a real network
+  # boundary and leaves an inspectable /deliveries record. No published
+  # port; no real-world side effects; every response carries its own
+  # "illustrative stub" disclaimer.
+  stubs:
+    build: ./stubs
+
+  # Secrets store for whatever real connector eventually needs internal
+  # credentials to reach a PMS/ERP (Tier 2/3). No connector exists yet, so
+  # nothing reads from this yet; it's deployed ready rather than bolted on
+  # later — see ARCHITECTURE.md. Dev mode only
+  # (in-memory, auto-unsealed): never use this configuration in production.
+  # No published port, same reasoning as `verify` — nothing external needs
+  # to reach it yet, and the dev root token below has no business being
+  # network-reachable from outside docker at all. Use `docker exec
+  # agent-embassy-openbao-1 sh -c "curl ... http://127.0.0.1:8200/..."` (or the
+  # `bao` CLI inside the container) for local inspection.
+  openbao:
+    image: openbao/openbao:2.6.1
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - BAO_DEV_ROOT_TOKEN_ID=dev-only-token
+      - BAO_DEV_LISTEN_ADDRESS=0.0.0.0:8200

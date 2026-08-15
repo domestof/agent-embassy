@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block page_title %}Catalog request activity{% endblock %}
+{% block page_desc %}<p class="page-desc">Recent requests to your public catalog and manifest. Tier 0 has no auth and nothing enforces the advertised rate limit yet — this is traffic visibility, not security monitoring. A "Verified domain" means that specific request carried a valid Tier 1 session for the domain shown — the one thing Tier 1's domain-challenge actually proves, made visible here instead of being computed and discarded.</p>{% endblock %}
+{% block page_actions %}<a href="/monitoring" class="btn btn-secondary">Refresh</a>{% endblock %}
+{% block content %}
+{% if entries %}
+<div class="twrap">
+<table>
+  <thead><tr><th>Time</th><th>IP</th><th>Method</th><th>Path</th><th>Status</th><th>Verified domain</th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+    <tr>
+      <td>{{ e.time }}</td>
+      <td>{{ e.ip }}</td>
+      <td>{{ e.method }}</td>
+      <td>{{ e.path }}</td>
+      <td><span class="badge {{ 'badge-ok' if e.status and e.status < 400 else 'badge-error' }}">{{ e.status }}</span></td>
+      <td>{% if e.verified_domain %}<span class="badge badge-ok">{{ e.verified_domain }}</span>{% else %}—{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>No recent activity found. If this seems wrong, confirm the static-logs volume mount is working (see README).</p>
+{% endif %}
+{% endblock %}

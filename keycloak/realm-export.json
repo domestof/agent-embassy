@@ -1,0 +1,48 @@
+{
+  "realm": "agent-embassy",
+  "enabled": true,
+  "attributes": {
+    "frontendUrl": "http://keycloak:8080"
+  },
+  "clients": [
+    {
+      "clientId": "example-partner",
+      "name": "Example Tier 2 partner (stand-in for a real pilot supplier)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "example-partner-dev-secret-changeme",
+      "protocolMappers": [
+        {
+          "name": "tier2-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "agent-embassy-tier2",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "agent-embassy-tier2",
+      "name": "Agent Embassy resource server (Tier 3 token introspection)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "agent-embassy-tier2-dev-secret-changeme"
+    }
+  ]
+}

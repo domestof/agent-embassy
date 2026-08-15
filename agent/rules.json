@@ -1,0 +1,7 @@
+{
+  "allowed_channels": ["mock_erp", "slack_stub", "email_stub"],
+  "rules": [
+    {"action_type": "order.place", "max_amount_cents": 20000, "channel": "mock_erp"},
+    {"action_type": "order.place", "channel": "llm", "fallback_channel": "mock_erp"}
+  ]
+}

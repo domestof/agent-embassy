@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block page_title %}Pending approvals{% endblock %}
+{% block page_desc %}<p class="page-desc">Tier 3 orders that exceed their client's mandate wait here for an explicit human decision — approving executes the order via the internal agent and counts it against the mandate; rejecting refuses it. Nothing on this page has been executed yet.</p>{% endblock %}
+{% block page_actions %}<a href="/approvals" class="btn btn-secondary">Refresh</a>{% endblock %}
+{% block content %}
+<div class="callout note"><span class="ci">note</span><p>This queue is in-memory and NOT persisted — a <code>verify</code> restart clears it, and the affected partners' polls will report their actions as unknown. Entries also expire on their own (see each row) if nobody decides.</p></div>
+{% if error %}<div class="callout error"><span class="ci">error</span><p>{{ error }}</p></div>{% endif %}
+{% if message %}<div class="callout note"><span class="ci">ok</span><p>{{ message }}</p></div>{% endif %}
+{% if entries %}
+<div class="twrap">
+<table>
+  <thead><tr><th>Queued</th><th>Client</th><th>Item</th><th>Qty</th><th>Amount</th><th>Mandate (used / limit)</th><th>Expires</th><th></th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+    <tr>
+      <td>{{ e.queued_at }}</td>
+      <td>
+        {{ e.client_id }}
+        {% if e.grant and e.grant.weekly_limit_cents is none %}
+          <span class="badge badge-error">mandate revoked</span>
+        {% endif %}
+      </td>
+      <td>
+        {{ e.item }}
+        {% if e.duplicate %}
+          <span class="badge badge-warn" title="Another pending entry has the same client, item, and amount — each approval executes and spends separately. Make sure two admins aren't both approving the same real-world request.">duplicate</span>
+        {% endif %}
+      </td>
+      <td>{{ e.quantity }}</td>
+      <td>€{{ "%.2f"|format(e.amount_cents / 100) }}</td>
+      <td>
+        {% if e.grant and e.grant.weekly_limit_cents is not none %}
+          €{{ "%.2f"|format(e.grant.used_cents / 100) }} / €{{ "%.2f"|format(e.grant.weekly_limit_cents / 100) }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>{{ e.expires_at }}</td>
+      <td class="actions">
+        <form method="post" action="/approvals/{{ e.action_id }}/approve" class="inline"
+              onsubmit="return confirm('Approve this order? It will be EXECUTED by the internal agent now and its amount counted against the client\'s mandate.')">
+          <button type="submit" class="btn-primary">Approve</button>
+        </form>
+        <form method="post" action="/approvals/{{ e.action_id }}/reject" class="inline"
+              onsubmit="return confirm('Reject this order? The partner\'s next status poll will see the rejection.')">
+          <button type="submit" class="btn-danger">Reject</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>Nothing awaiting approval.</p>
+{% endif %}
+{% endblock %}

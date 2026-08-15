@@ -1,0 +1,975 @@
+<title>Agent Embassy — Installation &amp; Configuration Guide</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --paper: #eef1f0;
+    --paper-raised: #ffffff;
+    --paper-sunk: #e4e8e6;
+    --ink: #12161c;
+    --ink-soft: #4b5560;
+    --ink-faint: #6f7a76;
+    --line: #ccd3d1;
+    --line-soft: #dde3e1;
+    --accent: #c1601f;
+    --accent-text: #a04d15;
+    --accent-soft: #f3e3d3;
+    --accent-2: #1f6b52;
+    --accent-2-soft: #dcece5;
+    --warn: #9c5a12;
+    --warn-bg: #faf0dd;
+    --warn-line: #e3c98f;
+    --tier0-bg: #9aa3a1; --tier0-fg: #141816;
+    --tier1-bg: #c8934a; --tier1-fg: #241505;
+    --tier2-bg: #c1601f; --tier2-fg: #fff6ec;
+    --tier3-bg: #5c6a66; --tier3-fg: #eef3f1;
+    --term-bg: #14181a;
+    --term-fg: #d7ded9;
+    --term-faint: #7c8985;
+    --term-accent: #e2934f;
+    --term-line: #2a3134;
+    --shadow: 0 1px 2px rgba(18,22,28,0.06), 0 12px 28px -16px rgba(18,22,28,0.22);
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14181a;
+      --paper-raised: #1b2124;
+      --paper-sunk: #101416;
+      --ink: #e7ece9;
+      --ink-soft: #a9b4b0;
+      --ink-faint: #7c8985;
+      --line: #2c3437;
+      --line-soft: #232a2c;
+      --accent: #e2934f;
+      --accent-text: #e6a266;
+      --accent-soft: #2c2118;
+      --accent-2: #3fa17f;
+      --accent-2-soft: #16241e;
+      --warn: #e2b25c;
+      --warn-bg: #26200f;
+      --warn-line: #4a3c1c;
+      --tier1-bg: #a97a3e; --tier1-fg: #fbeedd;
+      --tier3-bg: #384442; --tier3-fg: #dce7e4;
+      --shadow: 0 1px 2px rgba(0,0,0,0.5), 0 16px 36px -18px rgba(0,0,0,0.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14181a;
+    --paper-raised: #1b2124;
+    --paper-sunk: #101416;
+    --ink: #e7ece9;
+    --ink-soft: #a9b4b0;
+    --ink-faint: #7c8985;
+    --line: #2c3437;
+    --line-soft: #232a2c;
+    --accent: #e2934f;
+    --accent-text: #e6a266;
+    --accent-soft: #2c2118;
+    --accent-2: #3fa17f;
+    --accent-2-soft: #16241e;
+    --warn: #e2b25c;
+    --warn-bg: #26200f;
+    --warn-line: #4a3c1c;
+    --tier1-bg: #a97a3e; --tier1-fg: #fbeedd;
+    --shadow: 0 1px 2px rgba(0,0,0,0.5), 0 16px 36px -18px rgba(0,0,0,0.7);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent); color: #fff6ec; }
+  a { color: var(--accent-text); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px;
+  }
+  h1, h2, h3, h4 { font-family: var(--mono); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  code { font-family: var(--mono); font-size: 0.88em; background: var(--line-soft); border: 1px solid var(--line); border-radius: 4px; padding: 0.05em 0.4em; }
+  strong { color: var(--ink); font-weight: 650; }
+
+  /* ---------- chrome header ---------- */
+  .chrome { border-bottom: 1px solid var(--line); background: var(--paper-raised); }
+  .chrome-inner {
+    max-width: 1180px; margin: 0 auto; padding: 0.7rem 1.5rem;
+    display: flex; align-items: center; gap: 0.9rem;
+    font-family: var(--mono); font-size: 0.78rem; color: var(--ink-faint);
+  }
+  .dots { display: flex; gap: 6px; flex-shrink: 0; }
+  .dots span { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .dots span:nth-child(1) { background: #c1601f; opacity: .55; }
+  .dots span:nth-child(2) { background: #c8934a; opacity: .55; }
+  .dots span:nth-child(3) { background: #1f6b52; opacity: .55; }
+  .chrome-path .sep { color: var(--line); margin: 0 0.15em; }
+
+  /* ---------- hero ---------- */
+  .hero { max-width: 1180px; margin: 0 auto; padding: 2.6rem 1.5rem 2rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent-text); display: flex; align-items: center; gap: 0.6em; margin: 0 0 0.9em;
+  }
+  .eyebrow::before { content: ""; width: 1.4em; height: 1px; background: var(--accent); display: inline-block; }
+  .hero h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); }
+  .hero .lede { margin-top: 0.7rem; font-size: 1.08rem; line-height: 1.65; color: var(--ink-soft); max-width: 62ch; }
+  .status-row { margin-top: 1.3rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.55rem; }
+  .badge {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.03em; font-weight: 700;
+    padding: 0.28em 0.7em; border-radius: 100px; white-space: nowrap;
+  }
+  .badge.t0 { background: var(--tier0-bg); color: var(--tier0-fg); }
+  .badge.t1 { background: var(--tier1-bg); color: var(--tier1-fg); }
+  .badge.t2 { background: var(--tier2-bg); color: var(--tier2-fg); }
+  .badge.t3 { background: var(--tier3-bg); color: var(--tier3-fg); }
+  .badge.road { background: transparent; color: var(--ink-faint); border: 1px dashed var(--line); }
+  .badge-label { font-family: var(--mono); font-size: 0.76rem; color: var(--ink-faint); }
+  .quicknav { margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .quicknav a {
+    font-family: var(--mono); font-size: 0.78rem; color: var(--ink-soft); text-decoration: none;
+    border: 1px solid var(--line); border-radius: 7px; padding: 0.4em 0.8em; background: var(--paper-raised);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .quicknav a:hover { border-color: var(--accent); color: var(--accent-text); }
+
+  /* ---------- layout ---------- */
+  .layout { max-width: 1180px; margin: 0 auto; padding: 0 1.5rem 5rem; display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 3rem; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .toc { display: none; } }
+
+  .toc { position: sticky; top: 1.5rem; font-family: var(--mono); font-size: 0.78rem; max-height: calc(100vh - 3rem); overflow-y: auto; }
+  .toc-group { margin-bottom: 1.3rem; }
+  .toc-group-label { color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.66rem; margin-bottom: 0.5em; }
+  .toc a {
+    display: flex; align-items: center; gap: 0.55em; text-decoration: none; color: var(--ink-soft);
+    padding: 0.32em 0; border-left: 2px solid transparent; padding-left: 0.7em; margin-left: -0.7em;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .toc a .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line); flex-shrink: 0; }
+  .toc a:hover { color: var(--ink); }
+  .toc a.active { color: var(--accent-text); border-left-color: var(--accent); font-weight: 600; }
+  .toc a.active .dot { background: var(--accent); }
+
+  main { min-width: 0; }
+  section { padding-top: 3.2rem; margin-top: -1rem; scroll-margin-top: 1.2rem; }
+  section:first-child { padding-top: 0; }
+  section + section { border-top: 1px solid var(--line-soft); }
+  .section-head { display: flex; align-items: baseline; gap: 0.7em; flex-wrap: wrap; margin-bottom: 0.5rem; }
+  .section-head h2 { font-size: clamp(1.35rem, 2.4vw, 1.7rem); }
+  .section-kicker { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); letter-spacing: 0.06em; }
+  .section-intro { margin-top: 0.9rem; max-width: 66ch; color: var(--ink-soft); }
+  .section-intro + .section-intro { margin-top: 0.7em; }
+
+  /* ---------- steps ---------- */
+  .step { display: grid; grid-template-columns: 2.2rem minmax(0,1fr); gap: 1rem; margin-top: 1.7rem; }
+  .step-num {
+    width: 2.2rem; height: 2.2rem; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 700; font-size: 0.95rem; background: var(--paper-raised);
+    border: 1px solid var(--line); color: var(--accent-text); flex-shrink: 0;
+  }
+  .step-body h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .step-body > p { color: var(--ink-soft); max-width: 66ch; }
+  .step-body > p + p { margin-top: 0.6em; }
+
+  /* ---------- terminal / code blocks ---------- */
+  .cmd { margin-top: 0.8rem; border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--term-line); }
+  .cmd-bar {
+    background: var(--paper-sunk); border-bottom: 1px solid var(--term-line); padding: 0.45em 0.8em;
+    display: flex; align-items: center; justify-content: space-between; gap: 0.6em;
+  }
+  .cmd-bar span.label { font-family: var(--mono); font-size: 0.7rem; color: var(--ink-faint); letter-spacing: 0.03em; }
+  .copy-btn {
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.03em; color: var(--ink-faint);
+    background: transparent; border: 1px solid var(--line); border-radius: 5px; padding: 0.25em 0.6em; cursor: pointer;
+  }
+  .copy-btn:hover { color: var(--ink); border-color: var(--ink-faint); }
+  .copy-btn[data-copied="true"] { color: var(--accent-2); border-color: var(--accent-2); }
+  pre.term {
+    margin: 0; padding: 0.9em 1em; background: var(--term-bg); color: var(--term-fg);
+    font-family: var(--mono); font-size: 0.82rem; line-height: 1.65; overflow-x: auto;
+  }
+  pre.term .c { color: var(--term-faint); }
+  pre.term .v { color: var(--term-accent); }
+  pre.term .k { color: #7fb8a3; }
+
+  /* ---------- callouts ---------- */
+  .callout { margin-top: 1rem; border-radius: 10px; padding: 0.85em 1.05em; border: 1px solid; display: flex; gap: 0.7em; max-width: 66ch; }
+  .callout p { font-size: 0.92rem; color: var(--ink-soft); }
+  .callout strong { color: inherit; }
+  .callout .ci { font-family: var(--mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; flex-shrink: 0; padding-top: 0.15em; }
+  .callout.note { background: var(--accent-2-soft); border-color: var(--accent-2); }
+  .callout.note .ci { color: var(--accent-2); }
+  .callout.warn { background: var(--warn-bg); border-color: var(--warn-line); }
+  .callout.warn .ci { color: var(--warn); }
+  .callout.proof { background: var(--paper-raised); border-color: var(--line); }
+  .callout.proof .ci { color: var(--ink-faint); }
+
+  /* ---------- flow diagrams ---------- */
+  .flow { display: flex; align-items: stretch; gap: 0; margin: 1.4rem 0 0.6rem; overflow-x: auto; padding-bottom: 0.3rem; }
+  .flow-step { flex: 1 1 0; min-width: 132px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 9px; padding: 0.8em 0.9em; }
+  .flow-step .fn { font-family: var(--mono); font-size: 0.68rem; color: var(--accent-text); font-weight: 700; }
+  .flow-step .ft { font-size: 0.86rem; margin-top: 0.3em; color: var(--ink); font-weight: 600; }
+  .flow-step .fd { font-size: 0.78rem; margin-top: 0.25em; color: var(--ink-faint); }
+  .flow-arrow { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 2rem; color: var(--line); font-size: 1.1rem; }
+  @media (max-width: 640px) { .flow { flex-direction: column; } .flow-arrow { width: auto; height: 1.4rem; transform: rotate(90deg); } }
+
+  .dual { display: flex; gap: 1rem; margin-top: 1.4rem; flex-wrap: wrap; align-items: stretch; }
+  .dual-card { flex: 1 1 220px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper-raised); padding: 1rem 1.1rem; }
+  .dual-card h4 { font-size: 0.86rem; }
+  .dual-card p { font-size: 0.82rem; color: var(--ink-faint); margin-top: 0.4em; }
+  .dual-plus { flex: 0 0 auto; align-self: center; font-family: var(--mono); font-weight: 700; color: var(--ink-faint); font-size: 1.1rem; }
+  .dual-result { flex: 1 1 100%; margin-top: 0.2rem; border-radius: 10px; border: 1px dashed var(--accent-2); background: var(--accent-2-soft); padding: 0.8rem 1.1rem; font-size: 0.86rem; color: var(--ink); }
+
+  /* ---------- tables ---------- */
+  .twrap { margin-top: 1rem; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table.ref { border-collapse: collapse; width: 100%; font-size: 0.85rem; min-width: 560px; }
+  table.ref th { text-align: left; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); background: var(--paper-sunk); padding: 0.6em 0.9em; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.ref td { padding: 0.6em 0.9em; border-bottom: 1px solid var(--line-soft); color: var(--ink-soft); vertical-align: top; }
+  table.ref tr:last-child td { border-bottom: none; }
+  table.ref td.mono, table.ref code { font-family: var(--mono); }
+  table.ref td.num { font-variant-numeric: tabular-nums; }
+  table.ref td strong { color: var(--ink); }
+
+  /* ---------- system map ---------- */
+  .sysmap { margin-top: 1.4rem; display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 0.7rem; }
+  .svc { border-radius: 10px; border: 1px solid var(--line); background: var(--paper-raised); padding: 0.8em 0.9em; position: relative; }
+  .svc .sn { font-family: var(--mono); font-weight: 700; font-size: 0.88rem; }
+  .svc .sp { font-family: var(--mono); font-size: 0.72rem; color: var(--accent-text); margin-top: 0.2em; }
+  .svc .sd { font-size: 0.78rem; color: var(--ink-faint); margin-top: 0.4em; line-height: 1.45; }
+  .svc.internal { border-style: dashed; }
+  .svc.internal .sp { color: var(--ink-faint); }
+
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--line); background: var(--paper-raised); }
+  .footer-inner { max-width: 1180px; margin: 0 auto; padding: 2.2rem 1.5rem; display: flex; flex-wrap: wrap; gap: 1.6rem; justify-content: space-between; }
+  .footer-links { display: flex; flex-wrap: wrap; gap: 1.2rem; font-family: var(--mono); font-size: 0.78rem; }
+  .footer-meta { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); }
+</style>
+
+<div class="chrome">
+  <div class="chrome-inner">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="chrome-path">agent-embassy<span class="sep">/</span>docs<span class="sep">/</span>installation-guide.html</div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="eyebrow">Installation &amp; configuration guide</div>
+  <h1>Agent Embassy</h1>
+  <p class="lede">Everything you need to bring up the full stack locally with Docker Compose and configure each trust tier — from the anonymous public catalog through OAuth2+mTLS partner access and the Tier 3 mandate/approval-queue demo. Every command below is copied verbatim from the running codebase, not paraphrased.</p>
+  <div class="status-row">
+    <span class="badge-label">Implemented, runnable today:</span>
+    <span class="badge t0">TIER 0 · public catalog</span>
+    <span class="badge t1">TIER 1 · domain-verified</span>
+    <span class="badge t2">TIER 2 · OAuth2 + mTLS</span>
+    <span class="badge t3">TIER 3 · mandates + approval queue (stub channels)</span>
+  </div>
+  <nav class="quicknav">
+    <a href="#prerequisites">Prerequisites</a>
+    <a href="#setup">One-time setup</a>
+    <a href="#tier0">Tier 0</a>
+    <a href="#tier1">Tier 1</a>
+    <a href="#tier2">Tier 2</a>
+    <a href="#tier3">Tier 3</a>
+    <a href="#admin-ui">Admin UI</a>
+    <a href="#partner-clients">Partner clients</a>
+    <a href="#configuration">Configuration reference</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+  </nav>
+</header>
+
+<div class="layout">
+  <nav class="toc" id="toc">
+    <div class="toc-group">
+      <div class="toc-group-label">Get running</div>
+      <a href="#prerequisites"><span class="dot"></span>Prerequisites</a>
+      <a href="#setup"><span class="dot"></span>One-time setup</a>
+      <a href="#overview"><span class="dot"></span>System map</a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-label">Trust tiers</div>
+      <a href="#tier0"><span class="dot"></span>Tier 0 · Public catalog</a>
+      <a href="#tier1"><span class="dot"></span>Tier 1 · Domain-verified</a>
+      <a href="#tier2"><span class="dot"></span>Tier 2 · OAuth2 + mTLS</a>
+      <a href="#tier3"><span class="dot"></span>Tier 3 · Mandates + approval</a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-label">Administration</div>
+      <a href="#admin-ui"><span class="dot"></span>Admin UI</a>
+      <a href="#partner-clients"><span class="dot"></span>Partner clients</a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-label">Reference</div>
+      <a href="#configuration"><span class="dot"></span>Configuration</a>
+      <a href="#troubleshooting"><span class="dot"></span>Troubleshooting</a>
+      <a href="#further"><span class="dot"></span>Further reading</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <section id="prerequisites">
+      <div class="section-head"><h2>Prerequisites</h2></div>
+      <p class="section-intro">Three things, no more. Agent Embassy deliberately runs on nothing exotic — no Kubernetes, no cloud account, no managed database.</p>
+
+      <div class="twrap">
+        <table class="ref">
+          <tr><th>Requirement</th><th>Needed for</th><th>Notes</th></tr>
+          <tr><td><strong>Docker</strong> + the <code>docker compose</code> v2 CLI plugin</td><td>Every tier</td><td>The whole stack is one <code>docker-compose.yml</code> — eight services, no Kubernetes.</td></tr>
+          <tr><td><strong>Python 3</strong> (standard library only)</td><td>Optional verification scripts</td><td>Runs <code>tests/</code> and <code>verify/tests/</code> — nothing to <code>pip install</code> for the scripts themselves.</td></tr>
+          <tr><td><strong>OpenSSL</strong></td><td>Tier 2 only</td><td><code>certs/generate-dev-certs.sh</code> shells out to it to build a throwaway CA and certificates.</td></tr>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <span class="ci">Before you start</span>
+        <p>All eight services — <code>litellm</code>, <code>static</code>, <code>verify</code>, <code>keycloak</code>, <code>admin</code>, <code>openbao</code>, <code>agent</code> (the privileged internal agent), <code>stubs</code> (its illustrative execution channels) — live in one <code>docker-compose.yml</code> with no Compose profiles. A single <code>docker compose up</code> starts <strong>all of them</strong> every time, and validates <strong>every</strong> required <code>.env</code> variable before anything starts — not just the ones the tier you care about needs. Fill in the whole <code>.env</code> file in the setup step below, even if you only plan to exercise Tier 0 today. Which tier's <em>flows</em> you exercise against the running stack is a choice you make with <code>curl</code>/the browser afterward — it isn't a choice you make by starting fewer containers.</p>
+      </div>
+    </section>
+
+    <section id="setup">
+      <div class="section-head"><h2>One-time setup</h2><span class="section-kicker">~5 minutes, plus image pull/build time</span></div>
+      <p class="section-intro">Clone the repo, fill in real secrets, bring up the stack once, and generate local development certificates.</p>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Copy the environment file and set real values</h3>
+          <p>Nothing here has a working default — <code>docker-compose.yml</code> uses Compose's <code>${VAR:?error message}</code> syntax for every credential, so a blank value fails fast with a clear message instead of silently running with <code>admin</code>/<code>admin</code>.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="cp .env.example .env">Copy</button></div>
+            <pre class="term"><span class="c"># from the repo root</span>
+cp .env.example .env</pre>
+          </div>
+          <p>Open <code>.env</code> and set: <code>LITELLM_MASTER_KEY</code>, <code>ADMIN_UI_USERNAME</code>, <code>ADMIN_UI_PASSWORD</code>, <code>KEYCLOAK_ADMIN_USERNAME</code>, <code>KEYCLOAK_ADMIN_PASSWORD</code>, <code>ADMIN_INTERNAL_TOKEN</code>, <code>TIER3_INTROSPECTION_SECRET</code>, and (since the internal-agent pivot) <code>AGENT_INTERNAL_TOKEN</code> and <code>AGENT_STATUS_TOKEN</code> — every one of these is validated up front, so <code>docker compose up</code> fails loudly if any is missing. <code>AGENT_LLM_MODEL</code>/<code>ANTHROPIC_API_KEY</code> are optional (the internal agent runs rules-only without them). Leave <code>TIER2_AUDIENCE</code> at its default (<code>agent-embassy-tier2</code>) unless you've also changed it in <code>keycloak/realm-export.json</code> and <code>verify/keycloak_auth.py</code>. See the <a href="#configuration">configuration reference</a> for what each one gates.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Bring up the stack</h3>
+          <p>First run pulls <code>litellm</code>, <code>nginx:alpine</code>, <code>keycloak</code> and <code>openbao</code> and builds the <code>verify</code> and <code>admin</code> images from source — expect it to take a few minutes the first time. Keycloak's own health check can take up to two minutes before <code>admin</code> is allowed to start (it waits on <code>keycloak: condition: service_healthy</code>); the stack isn't stuck, Keycloak is genuinely still importing its realm.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="docker compose up">Copy</button></div>
+            <pre class="term">docker compose up</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Generate local development certificates (for Tier 2)</h3>
+          <p>Builds a throwaway CA, an nginx server certificate, and one example partner client certificate under <code>certs/</code>. Safe to run before or after step 2 — it only writes local files, which <code>static</code>'s bind mount picks up live. The script refuses to overwrite an existing CA; delete <code>certs/*.key certs/*.crt certs/*.srl</code> first if you need to regenerate.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="./certs/generate-dev-certs.sh">Copy</button></div>
+            <pre class="term">./certs/generate-dev-certs.sh</pre>
+          </div>
+          <div class="callout warn">
+            <span class="ci">Dev only</span>
+            <p>The CA's private key sits unencrypted right next to everything it signs. Never reuse these certificates outside local development.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="overview">
+      <div class="section-head"><h2>System map</h2><span class="section-kicker">what <code>docker compose up</code> actually starts</span></div>
+      <p class="section-intro">Eight containers. Four — <code>verify</code>, <code>openbao</code>, <code>agent</code> and <code>stubs</code> — publish no port at all: they're reachable only from inside the Docker network, so a caller can't bypass nginx's certificate/token checks by forging a header straight to the backend.</p>
+      <div class="sysmap">
+        <div class="svc"><div class="sn">litellm</div><div class="sp">:4000</div><div class="sd">MCP gateway fronting Tier 0/1 as tools (<code>POST /mcp/</code>); OTel traces to stdout. Tier 2/3 stay off it — mTLS caller-identity can't pass through a gateway.</div></div>
+        <div class="svc"><div class="sn">static</div><div class="sp">:8080 · :8443</div><div class="sd">nginx serving the public catalog; gates Tier 1/2 resources via <code>auth_request</code>.</div></div>
+        <div class="svc internal"><div class="sn">verify</div><div class="sp">internal only</div><div class="sd">Domain-challenge (Tier 1) + Keycloak JWT validation (Tier 2) + live introspection and mandate checks for Tier 3.</div></div>
+        <div class="svc"><div class="sn">keycloak</div><div class="sp">:8082</div><div class="sd">OAuth2/OIDC token issuance for Tier 2 partner clients.</div></div>
+        <div class="svc"><div class="sn">admin</div><div class="sp">:8090</div><div class="sd">Catalog CRUD, manifest editor, preview console, activity log, Tier 2 client management, Tier 1 config, Tier 3 approvals and internal-agent status.</div></div>
+        <div class="svc internal"><div class="sn">openbao</div><div class="sp">internal only</div><div class="sd">Secrets store, mirrors Tier 2 partner credentials as a backup of Keycloak's own store — nothing reads from it yet.</div></div>
+        <div class="svc internal"><div class="sn">agent</div><div class="sp">internal only</div><div class="sd">The privileged internal agent (Tier 3): routes an already-authorized handoff from <code>verify</code> to one execution channel, rules-first with an optional LLM step.</div></div>
+        <div class="svc internal"><div class="sn">stubs</div><div class="sp">internal only</div><div class="sd">Illustrative mock ERP/Slack/email channels the internal agent executes against — no real ERP or messaging system is connected.</div></div>
+      </div>
+    </section>
+
+    <section id="tier0">
+      <div class="section-head"><h2>Tier 0 — Public catalog</h2><span class="badge t0">no auth</span></div>
+      <p class="section-intro">An anonymous, unauthenticated catalog — the entry point every external agent starts from. Served directly by nginx, since LiteLLM has no built-in static-file serving.</p>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Fetch the manifest</h3>
+          <p>Every consuming agent is expected to discover the catalog by following this document's own links — never by hardcoding paths.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="curl http://localhost:8080/.well-known/agent-embassy.json">Copy</button></div>
+            <pre class="term">curl http://localhost:8080/.well-known/agent-embassy.json</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Fetch a catalog file</h3>
+          <p>Placeholder example entries ship in <code>static/</code> — replace them with real data before any real deployment.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="curl http://localhost:8080/catalog/products.json">Copy</button></div>
+            <pre class="term">curl http://localhost:8080/catalog/products.json</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Verify it end-to-end as two independent parties</h3>
+          <p><code>tests/tier0_two_party.py</code> plays the external-consumer role over real HTTP: it starts knowing only the base URL, discovers the catalog purely from the manifest's own links, validates the schema.org shape of each entry, and confirms <code>contact.json</code> (Tier 1) is refused without a session token.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="python3 tests/tier0_two_party.py            # defaults to http://localhost:8080">Copy</button></div>
+            <pre class="term">python3 tests/tier0_two_party.py            <span class="c"># defaults to http://localhost:8080</span></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tier1">
+      <div class="section-head"><h2>Tier 1 — Domain-verified contact routing</h2><span class="badge t1">domain challenge</span></div>
+      <p class="section-intro">The same pattern ACME/Let's Encrypt uses to prove domain control before issuing a TLS certificate — proves control of a domain, not legal company identity (that's Tier 2). One resource is gated behind it: <code>catalog/contact.json</code>. All traffic below goes through nginx on <code>:8080</code>, which reverse-proxies <code>verify</code>'s endpoints — <code>verify</code> itself has no port published to the host.</p>
+
+      <div class="flow">
+        <div class="flow-step"><div class="fn">01</div><div class="ft">Request a challenge</div><div class="fd">for the domain you want to verify</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="fn">02</div><div class="ft">Publish the token</div><div class="fd">as plain text, within 5 minutes</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="fn">03</div><div class="ft">Verify</div><div class="fd">exchange for a session token</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="fn">04</div><div class="ft">Use the resource</div><div class="fd">Bearer session token, 1 hour</div></div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Request a challenge</h3>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="curl -X POST http://localhost:8080/tier1/challenge \
+  -H 'Content-Type: application/json' -d '{&quot;domain&quot;:&quot;your-domain.example&quot;}'">Copy</button></div>
+            <pre class="term">curl -X POST http://localhost:8080/tier1/challenge \
+  -H 'Content-Type: application/json' -d '{"domain":"your-domain.example"}'
+<span class="c">#</span> <span class="k">=&gt;</span> {"domain":"your-domain.example","token":"...","well_known_path":"/.well-known/agent-embassy-challenge.txt","expires_in":<span class="v">300</span>}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Publish the token</h3>
+          <p>As plain text at <code>https://your-domain.example/.well-known/agent-embassy-challenge.txt</code>, within 5 minutes (<code>CHALLENGE_TTL_SECONDS</code>).</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Verify</h3>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="curl -X POST http://localhost:8080/tier1/verify \
+  -H 'Content-Type: application/json' -d '{&quot;domain&quot;:&quot;your-domain.example&quot;}'">Copy</button></div>
+            <pre class="term">curl -X POST http://localhost:8080/tier1/verify \
+  -H 'Content-Type: application/json' -d '{"domain":"your-domain.example"}'
+<span class="c">#</span> <span class="k">=&gt;</span> {"session_token":"...","domain":"your-domain.example","expires_in":<span class="v">3600</span>}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Use the session token</h3>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="curl http://localhost:8080/catalog/contact.json -H 'Authorization: Bearer &lt;session_token&gt;'">Copy</button></div>
+            <pre class="term">curl http://localhost:8080/catalog/contact.json -H 'Authorization: Bearer &lt;session_token&gt;'
+<span class="c"># without a valid token: 401, same as any Tier 1 resource</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout proof">
+        <span class="ci">What this proves</span>
+        <p>Control of the domain at challenge time — comparable to single-vantage-point domain validation as it worked before the CA/Browser Forum required multi-perspective corroboration (2025). It does <strong>not</strong> prove legal company identity. Residual risks accepted rather than built around: no early session-token revocation before the 1-hour TTL, only partial subdomain-takeover mitigation, no multi-perspective validation. See <a href="../ARCHITECTURE.md#access-tiers">ARCHITECTURE.md</a> for the full reasoning.</p>
+      </div>
+
+      <div class="step" style="margin-top:2rem;">
+        <div class="step-num">✓</div>
+        <div class="step-body">
+          <h3>Run the service's own test suite</h3>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="cd verify && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest">Copy</button></div>
+            <pre class="term">cd verify && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tier2">
+      <div class="section-head"><h2>Tier 2 — OAuth2 + mTLS partner access</h2><span class="badge t2">two independent proofs</span></div>
+      <p class="section-intro">Gates one example resource, <code>catalog/order-status.json</code> — an illustrative stub, since there is no real pilot supplier connector yet, the same posture as Tier 1's dropped PMS connector. Two proofs are required, checked by two different components:</p>
+
+      <div class="dual">
+        <div class="dual-card"><h4>OAuth2 access token</h4><p>Issued by Keycloak via the client-credentials grant. Must carry <code>aud=agent-embassy-tier2</code> — checked by <code>verify/keycloak_auth.py</code> against Keycloak's live JWKS.</p></div>
+        <div class="dual-plus">+</div>
+        <div class="dual-card"><h4>mTLS client certificate</h4><p>Presented on a dedicated TLS listener (<code>:8443</code>). Checked by nginx itself, before the request ever reaches the application layer.</p></div>
+        <div class="dual-result"><strong>Both required.</strong> A valid token over plain TLS is rejected; a valid client cert with no/expired token is rejected. Neither channel can compensate for the other.</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Get an access token</h3>
+          <p>Using the example partner client's credentials from <code>keycloak/realm-export.json</code> — change the secret before any real deployment.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="TOKEN=$(curl -s -X POST http://localhost:8082/realms/agent-embassy/protocol/openid-connect/token \
+  -d 'grant_type=client_credentials' -d 'client_id=example-partner' \
+  -d 'client_secret=example-partner-dev-secret-changeme' | python3 -c 'import sys,json;print(json.load(sys.stdin)[&quot;access_token&quot;])')">Copy</button></div>
+            <pre class="term">TOKEN=$(curl -s -X POST http://localhost:8082/realms/agent-embassy/protocol/openid-connect/token \
+  -d 'grant_type=client_credentials' -d 'client_id=example-partner' \
+  -d 'client_secret=example-partner-dev-secret-changeme' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Call the Tier 2 resource over mTLS</h3>
+          <p>Presenting the example client certificate generated in setup, plus the token.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="curl --cacert certs/ca.crt --cert certs/client-example-partner.crt --key certs/client-example-partner.key \
+  -H &quot;Authorization: Bearer $TOKEN&quot; https://localhost:8443/catalog/order-status.json">Copy</button></div>
+            <pre class="term">curl --cacert certs/ca.crt --cert certs/client-example-partner.crt --key certs/client-example-partner.key \
+  -H "Authorization: Bearer $TOKEN" https://localhost:8443/catalog/order-status.json
+<span class="c"># missing/wrong cert: TLS-level 400 (nginx never reaches the app layer)
+# valid cert but missing/invalid/expired token: 401</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout proof">
+        <span class="ci">What this proves</span>
+        <p>The caller holds a Keycloak-issued token scoped to this service <em>and</em> controls the private key for a certificate nginx's TLS listener accepted — two independent channels, not one mechanism wearing two names. TLS session resumption is disabled on this listener (<code>ssl_session_tickets off; ssl_session_cache off;</code>) — without it, nginx skips re-verifying the client certificate on a resumed session. Residual risk accepted rather than built around: no token revocation before its 5-minute TTL expires (Keycloak default).</p>
+      </div>
+
+      <div class="step" style="margin-top:2rem;">
+        <div class="step-num">✓</div>
+        <div class="step-body">
+          <h3>Run the service's own test suite</h3>
+          <p>Now includes Tier 2 cases — a real RSA-signed JWT is verified against a stubbed JWKS fetch, keeping the actual signature/claims-verification code path real; only the network fetch of Keycloak's public keys is mocked.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="cd verify && .venv/bin/pytest">Copy</button></div>
+            <pre class="term">cd verify && .venv/bin/pytest</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tier3">
+      <div class="section-head"><h2>Tier 3 — Mandates, approval queue, internal agent</h2><span class="badge t3">stub channels</span></div>
+      <p class="section-intro">A feasibility demo against illustrative stub channels — no real PMS/ERP or messaging system is connected, the same posture Tier 2's <code>order-status.json</code> already takes, and deliberately so: no partner will let Tier 3 touch their real system before seeing it proven against something fake first. Uses an illustrative example throughout: a laundry supplier auto-reordering up to €400/week.</p>
+      <p class="section-intro">Tier 3 does not connect directly to a PMS/ERP: <code>verify</code> (the gateway) authenticates, checks the mandate, reserves budget, and hands a fixed-schema envelope to the <strong>privileged internal agent</strong> — a separate <code>agent/</code> container, part of the product but swappable by each company — which routes the action to an execution channel (a mock-ERP order endpoint, a Slack-shaped webhook, an email-shaped send, all in <code>stubs/</code>, none published to the host) and reports back.</p>
+
+      <div class="flow">
+        <div class="flow-step"><div class="fn">01</div><div class="ft">Grant a mandate</div><div class="fd">a weekly limit, set by a human</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="fn">02</div><div class="ft">Place an order</div><div class="fd">within limit: executes now</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="fn">03</div><div class="ft">Beyond the limit</div><div class="fd">queued for human approval</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="fn">04</div><div class="ft">Revoke</div><div class="fd">takes effect immediately</div></div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Grant a weekly limit</h3>
+          <p>On a partner's page under <a href="#partner-clients">Partner clients</a>, set a "Tier 3 — deep integration" weekly limit, in whole euros. This is the "explicit human approval" step. Like Tier 1's config, the grant is hot, not persisted — it lives in <code>verify</code>'s process memory and reverts on a restart.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Place a mock order</h3>
+          <p>As that partner, over the mTLS <code>:8443</code> listener (same certificate/token setup as Tier 2).</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="curl --cacert certs/ca.crt --cert certs/client-example-partner.crt --key certs/client-example-partner.key \
+  -X POST -H &quot;Authorization: Bearer $TOKEN&quot; -H &quot;Content-Type: application/json&quot; \
+  -d '{&quot;item&quot;: &quot;Bath towels (24-pack)&quot;, &quot;quantity&quot;: 1, &quot;amount_cents&quot;: 5000}' \
+  https://localhost:8443/tier3/orders">Copy</button></div>
+            <pre class="term">curl --cacert certs/ca.crt --cert certs/client-example-partner.crt --key certs/client-example-partner.key \
+  -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"item": "Bath towels (24-pack)", "quantity": 1, "amount_cents": 5000}' \
+  https://localhost:8443/tier3/orders
+<span class="c"># within the mandate: 201, a schema.org Order executed by the internal agent
+#   (orderNumber is the stub channel's reference; the body names the channel
+#   and an action_id you can poll at GET /tier3/orders/&lt;action_id&gt;)
+# beyond the mandate's remaining budget: 202 pending_approval — queued for a
+#   human decision, NOT rejected, and does not consume budget
+# no grant for this client at all: 403
+# revoked/disabled/expired token: 401
+# internal agent container down: 503, fail closed, budget not consumed</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Approve or reject a queued order</h3>
+          <p>An order beyond the mandate waits on the admin UI's <strong>Approvals</strong> page (<code>http://localhost:8090/approvals</code>) until a human approves it (executes it, counts it against the mandate) or rejects it — or it expires on its own. The queue is bounded per client and, like everything else in <code>verify</code>'s store, in-memory: a restart clears it.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Revoke access immediately</h3>
+          <p>Click "Disable" on the partner's page (same page as step 1). The very next <code>/tier3/orders</code> request with that partner's still-unexpired token now gets 401, while the SAME token still gets 200 from Tier 2's <code>order-status.json</code> — concrete, live proof that Tier 3's revocation is real and Tier 2's isn't (by design — see the callout below). Revoking the Tier 3 grant itself also cancels that client's still-pending approvals.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>Review the audit trail</h3>
+          <p>At <code>http://localhost:8090/tier3-audit</code> — every attempt (accepted, rejected, queued, expired) with its reason and <code>action_id</code>.</p>
+        </div>
+      </div>
+
+      <div class="callout proof">
+        <span class="ci">What this proves</span>
+        <p>Tier 2's <code>/tier2/check</code> validates JWTs locally against Keycloak's published JWKS — disabling a Keycloak client does <strong>not</strong> invalidate tokens it already issued; they stay valid until their own 5-minute TTL expires. Tier 3 instead calls Keycloak's real token-introspection endpoint (RFC 7662) on every request — a disabled client fails introspection immediately. This is a genuine, live-verified architectural difference, not a claim: the same still-unexpired token gets 401 from Tier 3 and 200 from Tier 2 at the same moment (step 4 above).</p>
+      </div>
+
+      <div class="callout note">
+        <span class="ci">The internal agent's routing is rules-first</span>
+        <p><code>agent/rules.json</code> is the operator-edited routing table (first match wins; edit it and restart the <code>agent</code> container). A rule can name a channel directly, or delegate to <code>"llm"</code> — only then is a model consulted (optional; leave <code>AGENT_LLM_MODEL</code>/<code>ANTHROPIC_API_KEY</code> unset and the agent runs rules-only). The LLM's entire authority is picking one channel from the rule file's own allowlist; its output is validated by exact string equality, and anything unusable means the action <strong>fails</strong> — never a guessed default channel. The worst a prompt injection via an order's item text can achieve is a <em>different pre-authorized channel</em> for an already-authorized, budget-checked action. Three separate secrets gate the three edges (<code>verify</code>→agent, admin→agent status, admin→<code>verify</code>) — the agent, the one component that ingests attacker-influenced text, holds no token <code>verify</code> itself accepts.</p>
+      </div>
+
+      <div class="step" style="margin-top:2rem;">
+        <div class="step-num">✓</div>
+        <div class="step-body">
+          <h3>Run the test suites, and the strongest available end-to-end check</h3>
+          <p><code>verify/tests/test_tier3.py</code> mocks only the Keycloak introspection HTTP call, keeping the grant/limit/audit logic real; <code>admin/tests/test_tier3_client.py</code> mirrors the Tier 1 config client's tests.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="cd verify && .venv/bin/pytest
+cd admin && .venv/bin/pytest">Copy</button></div>
+            <pre class="term">cd verify && .venv/bin/pytest
+cd admin && .venv/bin/pytest</pre>
+          </div>
+          <p>Two live end-to-end proofs against the running stack. The first drives the demo above through raw HTTP; the second is the fuller loop — real agent + stub execution, the approval queue, fail-closed with the agent stopped, and revocation cancelling pending approvals:</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="ADMIN_UI_PASSWORD=&lt;value from your .env&gt; python3 tests/tier3_demo_smoke.py">Copy</button></div>
+            <pre class="term">ADMIN_UI_PASSWORD=&lt;value from your .env&gt; python3 tests/tier3_demo_smoke.py</pre>
+          </div>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="ADMIN_UI_PASSWORD=&lt;value from your .env&gt; python3 tests/tier3_agent_smoke.py">Copy</button></div>
+            <pre class="term">ADMIN_UI_PASSWORD=&lt;value from your .env&gt; python3 tests/tier3_agent_smoke.py</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="admin-ui">
+      <div class="section-head"><h2>Admin UI</h2><span class="section-kicker">port 8090</span></div>
+      <p class="section-intro">A server-rendered web UI for a pilot client's own admin to manage their public Tier 0 catalog and manifest without editing JSON by hand.</p>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Log in</h3>
+          <p>Open <code>http://localhost:8090</code> and sign in with <code>ADMIN_UI_USERNAME</code>/<code>ADMIN_UI_PASSWORD</code> from your <code>.env</code> — HTTP Basic Auth, a single shared credential, the same pattern as <code>LITELLM_MASTER_KEY</code>.</p>
+        </div>
+      </div>
+
+      <div class="twrap">
+        <table class="ref">
+          <tr><th>Page</th><th>What it does</th></tr>
+          <tr><td><strong>Catalog</strong><br/><span style="color:var(--ink-faint)">Products / Services / Open positions / Supplier needs</span></td><td>Add, edit, delete items. Fixed core fields per schema.org type; anything else goes through <code>additionalProperty</code> — no new field mechanism.</td></tr>
+          <tr><td><strong>Manifest</strong></td><td>Edits only the Tier 0 slice (<code>entity</code>, Tier 0's <code>rate_limit</code>/<code>extra</code>, <code>security</code>). Tier 1/2 entries render read-only and are never touched by a save here.</td></tr>
+          <tr><td><strong>Preview as an agent</strong><br/><span style="color:var(--ink-faint)"><code>/console</code></span></td><td>Makes a real HTTP request to the public <code>static</code> service and shows exactly what came back — the same "real HTTP, not internals" approach as <code>tests/tier0_two_party.py</code>.</td></tr>
+          <tr><td><strong>Catalog request activity</strong><br/><span style="color:var(--ink-faint)"><code>/monitoring</code></span></td><td>Recent <code>/catalog/*</code> and <code>/.well-known/*</code> requests, read from nginx's access log. Labeled "activity," not "security monitoring" — Tier 0 has no auth and nothing enforces its advertised rate limit yet. Shows the domain Tier 1 verified for a request, when there was one.</td></tr>
+          <tr><td><strong>Tier 1 config</strong><br/><span style="color:var(--ink-faint)"><code>/tier1-config</code></span></td><td>Edits <code>verify</code>'s TTLs and rate limits live — hot-reload, not persisted; reverts to the <code>.env</code> default on a restart.</td></tr>
+          <tr><td><strong>Approvals</strong><br/><span style="color:var(--ink-faint)"><code>/approvals</code></span></td><td>Tier 3's human-approval queue — approve or reject orders placed beyond a partner's mandate.</td></tr>
+          <tr><td><strong>Internal agent</strong><br/><span style="color:var(--ink-faint)"><code>/internal-agent</code></span></td><td>Read-only: the Tier 3 agent's routing rules, LLM configuration, and per-action decision log.</td></tr>
+        </table>
+      </div>
+
+      <div class="callout note">
+        <span class="ci">Out of scope, on purpose</span>
+        <p>Tier 1 config (TTLs, rate limits) is editable live from the admin UI's "Tier 1 config" page — <code>verify</code> applies a change immediately, no restart needed. It is a hot-reload, not a persist: the change lives only in <code>verify</code>'s process memory and reverts to the env var default in <code>docker-compose.yml</code>/<code>.env</code> on the next restart. Tier 2's certs/<code>contact.json</code>/<code>order-status.json</code> are not editable here — those stay JSON/CLI-managed. Catalog and manifest writes go straight to the files nginx serves — no restart needed — and are atomic (temp file + <code>os.replace</code>), so nginx never sees a half-written file.</p>
+      </div>
+
+      <div class="step" style="margin-top:2rem;">
+        <div class="step-num">✓</div>
+        <div class="step-body">
+          <h3>Run the test suite, and an optional live end-to-end check</h3>
+          <p>The smoke test adds a marker product via the admin API, then independently re-fetches it via the <em>public</em> endpoint, to confirm the write actually reached the file nginx serves.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="cd admin && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest">Copy</button></div>
+            <pre class="term">cd admin && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest</pre>
+          </div>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="ADMIN_UI_PASSWORD=&lt;value from your .env&gt; python3 tests/admin_smoke.py">Copy</button></div>
+            <pre class="term">ADMIN_UI_PASSWORD=&lt;value from your .env&gt; python3 tests/admin_smoke.py</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="partner-clients">
+      <div class="section-head"><h2>Managing Tier 2 partner clients</h2><span class="section-kicker">/keycloak-clients</span></div>
+      <p class="section-intro">Manages Tier 2 partner OAuth clients through Keycloak's real Admin REST API — no new identity system. It replaces hand-editing <code>keycloak/realm-export.json</code> for day-to-day partner onboarding (that file still governs the realm itself, the <code>example-partner</code> client, and certs).</p>
+
+      <div class="callout note">
+        <span class="ci">Why this exists</span>
+        <p>A client added by hand that forgets the <code>oidc-audience-mapper</code> protocol mapper (the one that sets <code>aud=agent-embassy-tier2</code>) fails Tier 2 auth <em>silently</em> — collapsed into the same generic "invalid token" as every other failure. Every client this page creates gets that mapper attached automatically, byte-for-byte the same shape as <code>example-partner</code>'s.</p>
+      </div>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Add a partner client</h3>
+          <p>At <code>http://localhost:8090/keycloak-clients</code>, pick a client ID (this becomes the partner's OAuth <code>client_id</code>) and a name.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Reveal the secret</h3>
+          <p>On the new client's page. Keycloak generates it; this page can only show it via a dedicated POST — never a GET — so it never ends up in a URL, browser history, or <code>Referer</code> header. It can be revealed again any time; regenerating it invalidates the old one immediately.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Hand the partner their credentials</h3>
+          <p>They authenticate exactly as shown in <a href="#tier2">Tier 2</a>'s <code>curl</code> example above, with their own <code>client_id</code>/secret in place of <code>example-partner</code>.</p>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <span class="ci">Credential note</span>
+        <p>This page talks to Keycloak using <code>KEYCLOAK_ADMIN_USERNAME</code>/<code>KEYCLOAK_ADMIN_PASSWORD</code> — Keycloak's own bootstrap realm-admin account. Treat it accordingly; it's full realm-admin access, not scoped to client management.</p>
+      </div>
+
+      <div class="step" style="margin-top:2rem;">
+        <div class="step-num">✓</div>
+        <div class="step-body">
+          <h3>Run the test suite, and the strongest available end-to-end check</h3>
+          <p>Creates a partner client through the admin UI, reveals its secret, mints a real access token from Keycloak with it, then runs that token through the <em>actual</em> <code>verify/keycloak_auth.validate_access_token()</code> inside the already-running <code>verify</code> container — not a reimplementation of that check — before deleting the client.</p>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="cd admin && .venv/bin/pytest">Copy</button></div>
+            <pre class="term">cd admin && .venv/bin/pytest</pre>
+          </div>
+          <div class="cmd">
+            <div class="cmd-bar"><span class="label">bash</span><button class="copy-btn" data-copy="ADMIN_UI_PASSWORD=&lt;value from your .env&gt; python3 tests/tier2_admin_smoke.py">Copy</button></div>
+            <pre class="term">ADMIN_UI_PASSWORD=&lt;value from your .env&gt; python3 tests/tier2_admin_smoke.py</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="configuration">
+      <div class="section-head"><h2>Configuration reference</h2></div>
+      <p class="section-intro">Every setting that matters, in one place.</p>
+
+      <h3 style="margin-top:1.6rem;font-size:0.95rem;">Environment variables (<code>.env</code>)</h3>
+      <div class="twrap">
+        <table class="ref">
+          <tr><th>Variable</th><th>Default</th><th>Used by</th><th>Purpose</th></tr>
+          <tr><td class="mono">LITELLM_MASTER_KEY</td><td class="mono">sk-changeme</td><td>litellm</td><td>Authenticates LiteLLM's own admin/API routes, and (as <code>x-litellm-api-key</code>) admission to its <code>/mcp</code> gateway. Direct <code>:8080</code> access to Tier 0's catalog still needs no auth at all — this only gates the MCP front door.</td></tr>
+          <tr><td class="mono">ADMIN_UI_USERNAME</td><td class="mono">admin</td><td>admin</td><td>HTTP Basic Auth username gating the admin UI.</td></tr>
+          <tr><td class="mono">ADMIN_UI_PASSWORD</td><td class="mono">changeme</td><td>admin</td><td>HTTP Basic Auth password — a separate secret from <code>LITELLM_MASTER_KEY</code>, different risk surface.</td></tr>
+          <tr><td class="mono">KEYCLOAK_ADMIN_USERNAME</td><td class="mono">admin</td><td>keycloak, admin</td><td>Keycloak's bootstrap realm-admin account. Used both to create the account and by the admin UI's Tier 2 client management.</td></tr>
+          <tr><td class="mono">KEYCLOAK_ADMIN_PASSWORD</td><td class="mono">changeme</td><td>keycloak, admin</td><td>Password for the account above.</td></tr>
+          <tr><td class="mono">TIER2_AUDIENCE</td><td class="mono">agent-embassy-tier2</td><td>verify, admin</td><td>Expected <code>aud</code> claim on Tier 2 tokens. Only override if you've also changed it in <code>keycloak/realm-export.json</code> and <code>verify/keycloak_auth.py</code>.</td></tr>
+          <tr><td class="mono">ADMIN_INTERNAL_TOKEN</td><td class="mono">changeme</td><td>verify, admin</td><td>Shared secret gating verify's internal admin endpoints (Tier 1 config hot-reload, Tier 3 grants/audit/approvals). Generate with <code>openssl rand -hex 32</code>.</td></tr>
+          <tr><td class="mono">TIER3_INTROSPECTION_SECRET</td><td class="mono">(dev value)</td><td>verify</td><td>Client secret verify uses to call Keycloak's token-introspection endpoint (Tier 3's immediate-revocation mechanism). Must match the <code>agent-embassy-tier2</code> client's secret in <code>keycloak/realm-export.json</code>.</td></tr>
+          <tr><td class="mono">AGENT_INTERNAL_TOKEN</td><td class="mono">changeme</td><td>verify, agent</td><td>Authorizes Tier 3 action handoffs (verify → the privileged internal agent). Deliberately not <code>ADMIN_INTERNAL_TOKEN</code> — the agent must hold no token verify accepts.</td></tr>
+          <tr><td class="mono">AGENT_STATUS_TOKEN</td><td class="mono">changeme</td><td>admin, agent</td><td>Authorizes read-only access to the internal agent's status/decision log (the admin UI's "Internal agent" page). A third secret — the admin UI must be unable to invoke executions.</td></tr>
+          <tr><td class="mono">AGENT_LLM_MODEL</td><td class="mono">(empty)</td><td>agent</td><td>Optional. Set to <code>internal-agent-default</code> (with <code>ANTHROPIC_API_KEY</code>) to enable LLM-assisted channel choice; empty = rules-only routing.</td></tr>
+          <tr><td class="mono">ANTHROPIC_API_KEY</td><td class="mono">(empty)</td><td>litellm</td><td>Optional. Your own Anthropic API key for the internal agent's channel-choice model — LLM usage bills to it.</td></tr>
+        </table>
+      </div>
+
+      <h3 style="margin-top:2rem;font-size:0.95rem;">Tier 1 tuning — <code>docker-compose.yml</code>, <code>verify.environment</code></h3>
+      <p style="margin-top:0.5rem;color:var(--ink-soft);max-width:66ch;font-size:0.92rem;">Not exposed via <code>.env</code>. These are boot-time defaults only — the admin UI's "Tier 1 config" page changes them live with no restart, but any change reverts to the default below the next time <code>verify</code> restarts.</p>
+      <div class="twrap">
+        <table class="ref">
+          <tr><th>Variable</th><th>Default</th><th>Meaning</th></tr>
+          <tr><td class="mono">CHALLENGE_TTL_SECONDS</td><td class="num mono">300</td><td>How long a domain-challenge token stays valid.</td></tr>
+          <tr><td class="mono">SESSION_TTL_SECONDS</td><td class="num mono">3600</td><td>How long a Tier 1 session token stays valid.</td></tr>
+          <tr><td class="mono">CHALLENGE_RATE_LIMIT_MAX</td><td class="num mono">10</td><td>Max requests to <code>/tier1/challenge</code> per rate-limit window.</td></tr>
+          <tr><td class="mono">CHALLENGE_RATE_LIMIT_WINDOW</td><td class="num mono">60</td><td><code>/tier1/challenge</code>'s rate-limit window, in seconds.</td></tr>
+          <tr><td class="mono">VERIFY_RATE_LIMIT_MAX</td><td class="num mono">10</td><td>Max requests to <code>/tier1/verify</code> per window — a separate bucket from <code>challenge</code>, so one can't starve the other.</td></tr>
+          <tr><td class="mono">VERIFY_RATE_LIMIT_WINDOW</td><td class="num mono">60</td><td><code>/tier1/verify</code>'s rate-limit window, in seconds.</td></tr>
+        </table>
+      </div>
+
+      <h3 style="margin-top:2rem;font-size:0.95rem;">Tier 3 tuning — <code>docker-compose.yml</code>, <code>verify.environment</code></h3>
+      <p style="margin-top:0.5rem;color:var(--ink-soft);max-width:66ch;font-size:0.92rem;">Not exposed via <code>.env</code>, and not hot-reloadable via the admin UI (unlike Tier 1's TTLs/rate limits above) — these are boot-time only.</p>
+      <div class="twrap">
+        <table class="ref">
+          <tr><th>Variable</th><th>Default</th><th>Meaning</th></tr>
+          <tr><td class="mono">TIER3_WINDOW_SECONDS</td><td class="num mono">604800</td><td>The mandate's rolling window — 7 days, matching "weekly limit."</td></tr>
+          <tr><td class="mono">TIER3_AUDIT_MAX</td><td class="num mono">500</td><td>Hard cap on stored audit events, per <code>client_id</code>. At the default rate limit below, one client reaches this in under an hour of steady ordering — a real, near-term exposure worth raising before a real pilot generates that kind of volume, not a theoretical one.</td></tr>
+          <tr><td class="mono">TIER3_RATE_LIMIT_MAX</td><td class="num mono">10</td><td>Max requests to <code>/tier3/orders</code> per window — its own bucket, independent of Tier 1's "Verify rate limit" (an earlier version shared it, silently coupling the two).</td></tr>
+          <tr><td class="mono">TIER3_RATE_LIMIT_WINDOW</td><td class="num mono">60</td><td><code>/tier3/orders</code>'s rate-limit window, in seconds.</td></tr>
+          <tr><td class="mono">TIER3_POLL_RATE_LIMIT_MAX</td><td class="num mono">60</td><td>Max requests to <code>GET /tier3/orders/&lt;id&gt;</code> per window — its own bucket too, so polling a pending action can't 429 a client's own order placement.</td></tr>
+          <tr><td class="mono">TIER3_POLL_RATE_LIMIT_WINDOW</td><td class="num mono">60</td><td>Poll endpoint's rate-limit window, in seconds.</td></tr>
+          <tr><td class="mono">TIER3_PENDING_MAX_PER_CLIENT</td><td class="num mono">10</td><td>Cap on a single client's queued (awaiting-approval) actions at once.</td></tr>
+        </table>
+      </div>
+
+      <h3 style="margin-top:2rem;font-size:0.95rem;">Host ports</h3>
+      <div class="twrap">
+        <table class="ref">
+          <tr><th>Service</th><th>Host port</th><th>Notes</th></tr>
+          <tr><td class="mono">litellm</td><td class="num mono">4000</td><td>&nbsp;</td></tr>
+          <tr><td class="mono">static</td><td class="num mono">8080 · 8443</td><td>8080 = HTTP (Tier 0/1); 8443 = HTTPS/mTLS listener (Tier 2)</td></tr>
+          <tr><td class="mono">verify</td><td class="mono">—</td><td>Not published — reachable only via nginx, or <code>docker exec</code></td></tr>
+          <tr><td class="mono">keycloak</td><td class="num mono">8082</td><td>Container's internal <code>:8080</code>, remapped because host port 8080 is already claimed by <code>static</code></td></tr>
+          <tr><td class="mono">admin</td><td class="num mono">8090</td><td>Container's internal <code>:8002</code></td></tr>
+          <tr><td class="mono">openbao</td><td class="mono">—</td><td>Not published — inspect via <code>docker exec agent-embassy-openbao-1 ...</code> if needed</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="troubleshooting">
+      <div class="section-head"><h2>Troubleshooting</h2></div>
+      <p class="section-intro">Real issues you may hit, and why they happen.</p>
+
+      <div class="step">
+        <div class="step-num">!</div>
+        <div class="step-body">
+          <h3>"set LITELLM_MASTER_KEY in .env" (or any other <code>:?</code> variable) on <code>docker compose up</code></h3>
+          <p>Expected and by design — Compose validates every required variable across all eight services before starting anything. Fill in the whole <code>.env</code> file, not just the tier you're working on.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">!</div>
+        <div class="step-body">
+          <h3><code>admin</code> doesn't start for up to two minutes</h3>
+          <p><code>admin</code> waits on <code>keycloak: condition: service_healthy</code>. Keycloak has no <code>curl</code>/<code>wget</code> in its image, so its health check is a TCP connect probe with up to 60 retries at a 2-second interval — it genuinely takes that long to import the realm and finish booting on a cold start. Watch progress with <code>docker compose logs -f keycloak</code>.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">!</div>
+        <div class="step-body">
+          <h3>Tier 2 <code>curl</code> fails with a TLS/certificate error</h3>
+          <p>Run <code>./certs/generate-dev-certs.sh</code> from the repo root if you haven't yet — Tier 2's mTLS listener has nothing to verify against until it has. The script is idempotent by refusal: if <code>certs/ca.key</code> already exists it exits without regenerating; delete <code>certs/*.key certs/*.crt certs/*.srl</code> first if you actually need fresh ones.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">!</div>
+        <div class="step-body">
+          <h3>Browsers warn about the Tier 2 certificate</h3>
+          <p>Expected — <code>certs/ca.crt</code> is a throwaway local development CA, not trusted by any real certificate store. Use <code>curl --cacert certs/ca.crt ...</code> (as shown above) rather than importing the dev CA anywhere persistent.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">!</div>
+        <div class="step-body">
+          <h3>Tier 0's activity page is empty but <code>docker compose logs static</code> shows requests</h3>
+          <p>Different log paths on purpose: the admin UI reads <code>./static-logs/access.log</code> on the host (bind-mounted over nginx's <code>/var/log/nginx</code> so a second container can read it), which means those lines stop showing up in <code>docker compose logs static</code> — they're not lost, just relocated.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">!</div>
+        <div class="step-body">
+          <h3>A token or session stopped working after a while</h3>
+          <p>By design, not a bug: Tier 1 challenge tokens expire after 5 minutes, Tier 1 session tokens after 1 hour, and Tier 2 access tokens after Keycloak's default 5 minutes — none of them can be revoked early before that TTL runs out. Request a fresh one.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">!</div>
+        <div class="step-body">
+          <h3>Port already in use</h3>
+          <p><code>4000</code>, <code>8080</code>, <code>8443</code>, <code>8082</code>, or <code>8090</code> may already be bound by something else on your machine. Edit the host side of the relevant <code>ports:</code> mapping in <code>docker-compose.yml</code> — the container-side port stays the same.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="further">
+      <div class="section-head"><h2>Further reading</h2></div>
+      <p class="section-intro">Where to go from here.</p>
+      <div class="twrap">
+        <table class="ref">
+          <tr><td><strong><a href="../ARCHITECTURE.md">ARCHITECTURE.md</a></strong></td><td>The technical design reference — reused components, security architecture, access tiers, and the manifest schema.</td></tr>
+          <tr><td><strong><a href="../README.md">README.md</a></strong></td><td>Project overview, components, use cases, and the same setup commands as this guide, kept in sync.</td></tr>
+          <tr><td><strong><a href="../LICENSE">LICENSE</a></strong></td><td>MIT — free to use, modify, and distribute, including commercially.</td></tr>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-links">
+      <a href="../ARCHITECTURE.md">Architecture</a>
+      <a href="../README.md">README</a>
+      <a href="../LICENSE">License</a>
+    </div>
+    <div class="footer-meta">Agent Embassy — early MVP, no market validation yet. Tiers 0–3 runnable locally; Tier 3 executes against illustrative stub channels, not a real ERP.</div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.getAttribute('data-copy') || '';
+      var done = function () {
+        btn.setAttribute('data-copied', 'true');
+        var original = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.removeAttribute('data-copied'); btn.textContent = original; }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () {});
+      }
+    });
+  });
+
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main section[id]'));
+  var links = {};
+  document.querySelectorAll('.toc a').forEach(function (a) {
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  if ('IntersectionObserver' in window && sections.length) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var link = links[entry.target.id];
+        if (!link) return;
+        if (entry.isIntersecting) {
+          Object.values(links).forEach(function (l) { l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function (s) { observer.observe(s); });
+  }
+})();
+</script>

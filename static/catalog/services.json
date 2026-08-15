@@ -1,0 +1,11 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "itemListElement": [
+    {
+      "@type": "Service",
+      "name": "Example service",
+      "description": "Placeholder entry — replace with real catalog data."
+    }
+  ]
+}

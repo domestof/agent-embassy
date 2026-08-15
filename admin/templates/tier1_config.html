@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block page_title %}Tier 1 config{% endblock %}
+{% block page_desc %}<p class="page-desc">Domain-challenge TTLs and rate limits, live in the running <code>verify</code> service.</p>{% endblock %}
+{% block content %}
+<div class="callout note">
+  <span class="ci">note</span>
+  <p>
+    <strong>Changes apply immediately</strong> to the running <code>verify</code> service — no restart needed.
+    They are <strong>not persisted</strong>: a <code>docker compose restart verify</code> (or <code>up</code>)
+    reverts to the values in <code>docker-compose.yml</code>/<code>.env</code>. Update those too if you want a
+    change to survive a restart.
+  </p>
+</div>
+{% if error %}<div class="callout error"><span class="ci">error</span><p>{{ error }}</p></div>{% endif %}
+<form method="post" action="/tier1-config">
+  <fieldset>
+    <legend>Challenge (domain-control proof)</legend>
+    <label>Challenge TTL (seconds)
+      <input type="number" min="1" name="challenge_ttl_seconds" value="{{ values.challenge_ttl_seconds if values.challenge_ttl_seconds is not none else '' }}">
+      <span class="form-hint">How long a domain-verification challenge stays valid before a caller must request a new one. Default 300 (5 minutes). Too short and slow DNS/file propagation can fail a legitimate check; too long gives more time for a leaked or guessed challenge to be reused.</span>
+    </label>
+    <label>Challenge rate limit — max requests
+      <input type="number" min="1" name="challenge_rate_limit_max" value="{{ values.challenge_rate_limit_max if values.challenge_rate_limit_max is not none else '' }}">
+      <span class="form-hint">How many <code>/tier1/challenge</code> requests one caller (by IP) may make within the window below before being rate-limited. Default 10.</span>
+    </label>
+    <label>Challenge rate limit — window (seconds)
+      <input type="number" min="1" name="challenge_rate_limit_window" value="{{ values.challenge_rate_limit_window if values.challenge_rate_limit_window is not none else '' }}">
+      <span class="form-hint">The rolling time window the max-requests limit above applies to. Default 60 (one minute).</span>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Verify &amp; session</legend>
+    <label>Session TTL (seconds)
+      <input type="number" min="1" name="session_ttl_seconds" value="{{ values.session_ttl_seconds if values.session_ttl_seconds is not none else '' }}">
+      <span class="form-hint">How long a session token issued by <code>/tier1/verify</code> stays valid before the caller must re-verify. Default 3600 (1 hour) — this is the token Tier 1 resources like <code>contact.json</code> accept.</span>
+    </label>
+    <label>Verify rate limit — max requests
+      <input type="number" min="1" name="verify_rate_limit_max" value="{{ values.verify_rate_limit_max if values.verify_rate_limit_max is not none else '' }}">
+      <span class="form-hint">How many <code>/tier1/verify</code> attempts a caller gets within the window below before being rate-limited — i.e. how many tries to redeem a challenge and receive a session token. Default 10.</span>
+    </label>
+    <label>Verify rate limit — window (seconds)
+      <input type="number" min="1" name="verify_rate_limit_window" value="{{ values.verify_rate_limit_window if values.verify_rate_limit_window is not none else '' }}">
+      <span class="form-hint">The rolling time window the verify max-requests limit above applies to. Default 60.</span>
+    </label>
+  </fieldset>
+
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

@@ -1,0 +1,24 @@
+{
+  "profile": "agent-embassy/0.1-draft",
+  "last_updated": "2026-08-08",
+  "entity": { "name": "Example Company", "tax_id": "NIF/CIF", "website": "https://example.com", "country": "ES" },
+  "public_catalog": {
+    "products": "/catalog/products.json",
+    "services": "/catalog/services.json",
+    "open_positions": "/catalog/jobs.json",
+    "supplier_needs": "/catalog/demand.json"
+  },
+  "access_tiers": [
+    { "tier": 0, "auth": "none", "rate_limit": "60/h" },
+    {
+      "tier": 1,
+      "auth": "domain-challenge",
+      "description": "Prove control of your own domain to unlock contact-routing info. Not a legal-identity check.",
+      "resources": { "contact": "/catalog/contact.json" },
+      "challenge_endpoint": "/tier1/challenge",
+      "verify_endpoint": "/tier1/verify",
+      "session_ttl_seconds": 3600
+    }
+  ],
+  "security": { "gateway_required": true, "direct_llm_exposure": false, "audit_logging": true }
+}

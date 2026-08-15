@@ -1,0 +1,11 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "itemListElement": [
+    {
+      "@type": "Demand",
+      "name": "Example supplier need",
+      "description": "Placeholder entry — replace with real catalog data."
+    }
+  ]
+}

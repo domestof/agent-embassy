@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_desc %}<p class="page-desc">Manage your public Tier 0 catalog, preview exactly what an external agent sees, check recent catalog requests, hot-reload Tier 1 config, manage Tier 2 partner OAuth clients, and grant/revoke Tier 3 weekly spending limits (feasibility demo, see Tier 3 audit). Tier 2's certs/contact.json/order-status.json remain not editable here.</p>{% endblock %}
+{% block content %}
+<ul class="cards">
+  {% for kind, label in kinds.items() %}
+  <li><a href="/catalog/{{ kind }}">{{ label }}</a></li>
+  {% endfor %}
+  <li><a href="/manifest">Manifest</a></li>
+  <li><a href="/tier1-config">Tier 1 config</a></li>
+  <li><a href="/console">Preview as an agent</a></li>
+  <li><a href="/monitoring">Catalog request activity</a></li>
+  <li><a href="/keycloak-clients">Tier 2 partner clients</a></li>
+  <li><a href="/tier3-audit">Tier 3 audit</a></li>
+</ul>
+{% endblock %}

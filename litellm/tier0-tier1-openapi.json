@@ -1,0 +1,75 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Agent Embassy — Tier 0 / Tier 1",
+    "version": "0.1.0",
+    "description": "Public catalog (Tier 0) and domain-verification (Tier 1) endpoints, wrapped as MCP tools by LiteLLM. Tier 2/3 are deliberately not included here -- they require mTLS with the caller's own client certificate, which an MCP gateway cannot forward on a caller's behalf without impersonating every caller as itself."
+  },
+  "servers": [{ "url": "http://static:80" }],
+  "paths": {
+    "/.well-known/agent-embassy.json": {
+      "get": {
+        "operationId": "get_manifest",
+        "summary": "Fetch the Agent Embassy manifest: entity info, links to the public catalog files, and the access tiers this company supports. Start here.",
+        "responses": { "200": { "description": "The manifest document.", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/catalog/products.json": {
+      "get": {
+        "operationId": "get_products",
+        "summary": "Fetch the public product catalog (schema.org ItemList of Products). No authentication required.",
+        "responses": { "200": { "description": "Product catalog.", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/catalog/services.json": {
+      "get": {
+        "operationId": "get_services",
+        "summary": "Fetch the public services catalog (schema.org ItemList). No authentication required.",
+        "responses": { "200": { "description": "Services catalog.", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/catalog/jobs.json": {
+      "get": {
+        "operationId": "get_open_positions",
+        "summary": "Fetch the public open-positions catalog (schema.org ItemList). No authentication required.",
+        "responses": { "200": { "description": "Open positions catalog.", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/catalog/demand.json": {
+      "get": {
+        "operationId": "get_supplier_needs",
+        "summary": "Fetch the public supplier-needs catalog (schema.org ItemList). No authentication required.",
+        "responses": { "200": { "description": "Supplier needs catalog.", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/tier1/challenge": {
+      "post": {
+        "operationId": "tier1_challenge",
+        "summary": "Step 1 of Tier 1 domain verification. Claim a domain you control; get back a one-time token to publish at https://<your-domain>/.well-known/agent-embassy-challenge.txt. Call with arguments: {\"body\": {\"domain\": \"your-domain.example\"}} -- the domain goes inside a nested 'body' object, not as a top-level argument.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["domain"], "properties": { "domain": { "type": "string", "description": "The domain you control, e.g. example.com" } } } } }
+        },
+        "responses": { "200": { "description": "Challenge token and where to publish it.", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/tier1/verify": {
+      "post": {
+        "operationId": "tier1_verify",
+        "summary": "Step 2 of Tier 1 domain verification. Call after publishing the challenge token from tier1_challenge. On success, returns a session_token -- pass it as 'Authorization: Bearer <session_token>' (a header on the MCP call itself, not a tool argument) to call get_contact. Call with arguments: {\"body\": {\"domain\": \"your-domain.example\"}}.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["domain"], "properties": { "domain": { "type": "string" } } } } }
+        },
+        "responses": { "200": { "description": "Session token on success.", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/catalog/contact.json": {
+      "get": {
+        "operationId": "get_contact",
+        "summary": "Fetch contact-routing details. Requires a valid Tier 1 session token from tier1_verify, sent as the 'Authorization: Bearer <session_token>' header on the MCP call itself. Without it, or with an expired/invalid token, this returns an authorization-error page as its content -- check the actual text for 'contact' fields, a successful-looking tool result is not proof of success.",
+        "responses": { "200": { "description": "Contact details, or an authorization error page as plain content." } }
+      }
+    }
+  }
+}

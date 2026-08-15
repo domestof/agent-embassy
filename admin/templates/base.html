@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Agent Embassy admin{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" aria-label="Admin navigation">
+      <div class="sidebar-brand">Agent Embassy <span class="dim">/ admin</span></div>
+
+      <div class="nav-group">
+        <div class="nav-group-label">Overview</div>
+        <a href="/" class="{{ 'active' if request.url.path == '/' }}">Dashboard</a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-label">Catalog (Tier 0)</div>
+        <a href="/catalog/products" class="{{ 'active' if request.url.path.startswith('/catalog/products') }}">Products</a>
+        <a href="/catalog/services" class="{{ 'active' if request.url.path.startswith('/catalog/services') }}">Services</a>
+        <a href="/catalog/jobs" class="{{ 'active' if request.url.path.startswith('/catalog/jobs') }}">Open positions</a>
+        <a href="/catalog/demand" class="{{ 'active' if request.url.path.startswith('/catalog/demand') }}">Supplier needs</a>
+        <a href="/manifest" class="{{ 'active' if request.url.path == '/manifest' }}">Manifest</a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-label">Configuration</div>
+        <a href="/tier1-config" class="{{ 'active' if request.url.path == '/tier1-config' }}">Tier 1 config</a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-label">Tier 2 &amp; 3 — partners</div>
+        <a href="/keycloak-clients" class="{{ 'active' if request.url.path.startswith('/keycloak-clients') }}">Partner clients</a>
+        <a href="/approvals" class="{{ 'active' if request.url.path == '/approvals' }}">Approvals</a>
+        <a href="/tier3-audit" class="{{ 'active' if request.url.path == '/tier3-audit' }}">Tier 3 audit</a>
+        <a href="/internal-agent" class="{{ 'active' if request.url.path == '/internal-agent' }}">Internal agent</a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-label">Tools</div>
+        <a href="/console" class="{{ 'active' if request.url.path == '/console' }}">Preview as an agent</a>
+        <a href="/monitoring" class="{{ 'active' if request.url.path == '/monitoring' }}">Request activity</a>
+      </div>
+    </nav>
+
+    <div class="page">
+      <header class="page-header">
+        <div>
+          <h1>{% block page_title %}{% endblock %}</h1>
+          {% block page_desc %}{% endblock %}
+        </div>
+        <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+      </header>
+      <div class="page-body">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

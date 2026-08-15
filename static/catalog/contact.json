@@ -1,0 +1,7 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ContactPoint",
+  "contactType": "supplier relations",
+  "email": "contact@example.com",
+  "description": "Placeholder entry — replace with real contact-routing data. Only served to requesters holding a valid Tier 1 domain-verification session."
+}

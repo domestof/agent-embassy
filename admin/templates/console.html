@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block page_title %}Preview as an agent{% endblock %}
+{% block page_desc %}<p class="page-desc">Makes a real HTTP request to your public catalog — exactly what an external agent sees, not just what was saved.</p>{% endblock %}
+{% block content %}
+<form method="post" action="/console/run">
+  <select name="path">
+    {% for name, path in resources.items() %}
+    <option value="{{ path }}" {% if selected == path %}selected{% endif %}>{{ name }} ({{ path }})</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn-secondary">Fetch</button>
+</form>
+
+{% if result %}
+<h2>
+  {{ result.path }}
+  <span class="badge {{ 'badge-ok' if result.status and result.status < 400 else 'badge-error' }}">{{ result.status }}</span>
+</h2>
+{% if result.error %}<div class="callout error"><span class="ci">error</span><p>{{ result.error }}</p></div>{% endif %}
+<pre>{{ result.pretty_body or result.raw_body }}</pre>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set FIELD_HINTS = {
+  "name": "The item's name as it will appear to any agent reading your public catalog — be specific, it's often the only field an agent's own filtering logic matches against.",
+  "description": "Short, factual description — this is prime real estate for agent-side matching (semantic search, keyword filters), so concrete details (materials, dimensions, terms) help more than marketing language.",
+  "sku": "Your own internal stock/reference code, shown publicly — useful if a partner needs to reference this exact item back to you (e.g. in an order).",
+  "url": "A public link with more detail on this item — if left blank, agents only see what's in this form.",
+  "title": "The job title as it will appear to any agent reading your public catalog — keep it specific and standard.",
+  "employmentType": "Schema.org's controlled vocabulary for this, e.g. FULL_TIME, PART_TIME, CONTRACTOR, TEMPORARY, INTERN — using the standard term (rather than free text) is what lets an agent filter by employment type reliably."
+} %}
+{% block page_title %}{{ "Edit" if index is not none else "Add" }} — {{ label }}{% endblock %}
+{% block content %}
+{% if error %}<div class="callout error"><span class="ci">error</span><p>{{ error }}</p></div>{% endif %}
+<form method="post" action="{{ ('/catalog/%s/%s/edit' % (kind, index)) if index is not none else ('/catalog/%s/new' % kind) }}">
+  {% for field in fields %}
+    <label>
+      {{ field.label }}{% if field.required %} *{% endif %}
+      {% if field.input_type == "textarea" %}
+      <textarea name="field__{{ field.name }}">{{ item.get(field.name, "") }}</textarea>
+      {% else %}
+      <input type="text" name="field__{{ field.name }}" value="{{ item.get(field.name, "") }}">
+      {% endif %}
+      {% if FIELD_HINTS.get(field.name) %}<span class="form-hint">{{ FIELD_HINTS.get(field.name) }}</span>{% endif %}
+    </label>
+  {% endfor %}
+
+  <fieldset>
+    <legend>Additional properties</legend>
+    <div id="extra-rows">
+      {% for prop in extra %}
+      <div class="extra-row">
+        <input type="text" name="extra_name" placeholder="Name" value="{{ prop.name }}">
+        <input type="text" name="extra_value" placeholder="Value" value="{{ prop.value }}">
+      </div>
+      {% endfor %}
+      <div class="extra-row">
+        <input type="text" name="extra_name" placeholder="Name">
+        <input type="text" name="extra_value" placeholder="Value">
+      </div>
+    </div>
+    <button type="button" class="btn-secondary" onclick="addExtraRow('extra-rows', '&lt;input type=&quot;text&quot; name=&quot;extra_name&quot; placeholder=&quot;Name&quot;&gt;&lt;input type=&quot;text&quot; name=&quot;extra_value&quot; placeholder=&quot;Value&quot;&gt;')">+ Add property</button>
+  </fieldset>
+
+  <button type="submit">Save</button>
+  <a href="/catalog/{{ kind }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

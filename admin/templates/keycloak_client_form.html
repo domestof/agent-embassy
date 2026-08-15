@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block page_title %}Add partner client{% endblock %}
+{% block content %}
+{% if error %}<div class="callout error"><span class="ci">error</span><p>{{ error }}</p></div>{% endif %}
+<form method="post" action="/keycloak-clients/new">
+  <label>
+    Client ID
+    <input type="text" name="client_id" value="{{ client_id }}" required>
+    <span class="form-hint">The OAuth <code>client_id</code> your partner's system will use to authenticate — letters, numbers, <code>.</code>, <code>_</code>, <code>-</code>, 1-255 characters, must start with a letter or number. This becomes part of their credentials; choose something stable, since changing it later means creating a new client.</span>
+  </label>
+  <label>
+    Name
+    <input type="text" name="name" value="{{ name }}">
+    <span class="form-hint">A human-readable label for this partner, shown in the partner-clients list — purely for your own reference, not sent to the partner or checked by any auth logic.</span>
+  </label>
+  <button type="submit">Create</button>
+  <a href="/keycloak-clients" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
